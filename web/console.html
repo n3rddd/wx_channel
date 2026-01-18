@@ -1,33 +1,19 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>视频号下载控制台</title>
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="stylesheet" href="css/app.css?v=1764987636">
-    <style>
-        /* 禁用文本选择 */
-        body {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
-        /* 允许输入框和文本域选择 */
-        input, textarea, [contenteditable="true"] {
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
-            user-select: text;
-        }
-    </style>
 </head>
+
 <body>
     <!-- Hamburger Menu Button (Mobile) -->
     <button class="hamburger" onclick="toggleSidebar()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12h18M3 6h18M3 18h18"/>
+            <path d="M3 12h18M3 6h18M3 18h18" />
         </svg>
     </button>
 
@@ -48,80 +34,90 @@
                     <div class="nav-group-title">主要功能</div>
                     <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="14" y="14" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
                         </svg>
                         <span>概览</span>
                     </a>
                     <a class="nav-item" data-page="browse" onclick="navigateTo('browse')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
                         </svg>
                         <span>浏览记录</span>
                     </a>
                     <a class="nav-item" data-page="downloads" onclick="navigateTo('downloads')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
                         <span>下载记录</span>
                     </a>
                     <a class="nav-item" data-page="queue" onclick="navigateTo('queue')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                            <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                            <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                            <line x1="8" y1="6" x2="21" y2="6" />
+                            <line x1="8" y1="12" x2="21" y2="12" />
+                            <line x1="8" y1="18" x2="21" y2="18" />
+                            <line x1="3" y1="6" x2="3.01" y2="6" />
+                            <line x1="3" y1="12" x2="3.01" y2="12" />
+                            <line x1="3" y1="18" x2="3.01" y2="18" />
                         </svg>
                         <span>下载队列</span>
                     </a>
                 </div>
-                
+
                 <!-- 工具 -->
                 <div class="nav-group">
                     <div class="nav-group-title">工具</div>
                     <a class="nav-item" data-page="batch" onclick="navigateTo('batch')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/>
-                            <line x1="9" y1="15" x2="15" y2="15"/>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="12" y1="18" x2="12" y2="12" />
+                            <line x1="9" y1="15" x2="15" y2="15" />
                         </svg>
                         <span>批量下载</span>
                     </a>
                 </div>
-                
+
                 <!-- 系统 -->
                 <div class="nav-group">
                     <div class="nav-group-title">系统</div>
                     <a class="nav-item" data-page="settings" onclick="navigateTo('settings')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
                         <span>设置</span>
                     </a>
                     <a class="nav-item" data-page="help" onclick="navigateTo('help')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
                         </svg>
                         <span>帮助</span>
                     </a>
                     <a class="nav-item theme-toggle-item" onclick="toggleTheme()">
-                        <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="5"/>
-                            <line x1="12" y1="1" x2="12" y2="3"/>
-                            <line x1="12" y1="21" x2="12" y2="23"/>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                            <line x1="1" y1="12" x2="3" y2="12"/>
-                            <line x1="21" y1="12" x2="23" y2="12"/>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="5" />
+                            <line x1="12" y1="1" x2="12" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="23" />
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                            <line x1="1" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="12" x2="23" y2="12" />
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
                         </svg>
-                        <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="display: none;">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                         </svg>
                         <span id="themeText">浅色模式</span>
                     </a>
@@ -132,7 +128,8 @@
             <div class="connection-status">
                 <span class="status-dot" id="statusDot"></span>
                 <span id="statusText">未连接</span>
-                <button class="btn btn-secondary" style="margin-left: auto; padding: 4px 8px; font-size: 12px;" onclick="retryConnection()">重试</button>
+                <button class="btn btn-secondary" style="margin-left: auto; padding: 4px 8px; font-size: 12px;"
+                    onclick="retryConnection()">重试</button>
             </div>
         </aside>
 
@@ -143,12 +140,12 @@
                 <h2 class="page-title" id="pageTitle">仪表盘</h2>
                 <div class="global-search" id="globalSearchContainer">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.35-4.35" />
                     </svg>
-                    <input type="text" id="globalSearchInput" placeholder="搜索视频..." 
-                           oninput="handleGlobalSearch(this.value)" 
-                           onfocus="showSearchDropdownIfResults()"
-                           autocomplete="off">
+                    <input type="text" id="globalSearchInput" placeholder="搜索视频..."
+                        oninput="handleGlobalSearch(this.value)" onfocus="showSearchDropdownIfResults()"
+                        autocomplete="off">
                     <!-- Search Results Dropdown - Requirements: 12.2, 12.3, 12.4 -->
                     <div class="search-results-dropdown" id="searchResultsDropdown">
                         <div id="searchResultsContent">
@@ -168,16 +165,16 @@
                             <div class="stat-value" id="statTotalBrowse">0</div>
                             <div class="stat-trend up" id="statBrowseTrend">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                                    <polyline points="17 6 23 6 23 12"/>
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
                                 </svg>
                                 <span>今日新增</span>
                             </div>
                         </div>
                         <div class="stat-icon browse">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
                             </svg>
                         </div>
                     </div>
@@ -187,16 +184,17 @@
                             <div class="stat-value" id="statTotalDownload">0</div>
                             <div class="stat-trend up">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                                    <polyline points="17 6 23 6 23 12"/>
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
                                 </svg>
                                 <span>已完成</span>
                             </div>
                         </div>
                         <div class="stat-icon download">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
                         </div>
                     </div>
@@ -206,17 +204,18 @@
                             <div class="stat-value" id="statTodayDownload">0</div>
                             <div class="stat-trend up">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                                    <polyline points="17 6 23 6 23 12"/>
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
                                 </svg>
                                 <span>今日活跃</span>
                             </div>
                         </div>
                         <div class="stat-icon today">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
                         </div>
                     </div>
@@ -230,7 +229,7 @@
                         </div>
                         <div class="stat-icon storage">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                             </svg>
                         </div>
                     </div>
@@ -244,8 +243,9 @@
                             <h3 class="card-title">下载统计</h3>
                             <a class="card-link" href="#" onclick="navigateTo('downloads'); return false;">
                                 更多
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                    <polyline points="9 18 15 12 9 6"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 14px; height: 14px;">
+                                    <polyline points="9 18 15 12 9 6" />
                                 </svg>
                             </a>
                         </div>
@@ -286,16 +286,18 @@
                             <h3 class="card-title">下载历史</h3>
                             <a class="card-link" href="#" onclick="navigateTo('downloads'); return false;">
                                 更多
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                    <polyline points="9 18 15 12 9 6"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 14px; height: 14px;">
+                                    <polyline points="9 18 15 12 9 6" />
                                 </svg>
                             </a>
                         </div>
                         <div class="recent-list" id="recentDownloadList">
                             <div class="empty-state">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
                                 </svg>
                                 <p>暂无下载记录</p>
                             </div>
@@ -309,16 +311,17 @@
                         <h3 class="card-title">最近浏览</h3>
                         <a class="card-link" href="#" onclick="navigateTo('browse'); return false;">
                             更多
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <polyline points="9 18 15 12 9 6"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 14px; height: 14px;">
+                                <polyline points="9 18 15 12 9 6" />
                             </svg>
                         </a>
                     </div>
                     <div class="recent-list" id="recentBrowseList">
                         <div class="empty-state">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
                             </svg>
                             <p>暂无浏览记录</p>
                         </div>
@@ -336,29 +339,38 @@
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-primary" onclick="downloadSelectedBrowse()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
                                 </svg>
                                 下载
                             </button>
                             <button class="btn btn-primary" onclick="exportForBatchDownload()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
                                 </svg>
                                 批量下载
                             </button>
                             <button class="btn btn-secondary" onclick="exportSelectedBrowse()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
                                 导出
                             </button>
                             <button class="btn btn-danger" onclick="deleteSelectedBrowse()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                 </svg>
                                 删除
                             </button>
@@ -373,12 +385,15 @@
                         <!-- Search Input with Debounce - Requirements: 1.3 -->
                         <div class="global-search" style="width: 240px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.35-4.35" />
                             </svg>
-                            <input type="text" id="browseSearchInput" placeholder="搜索标题或作者..." oninput="handleBrowseSearch(this.value)">
+                            <input type="text" id="browseSearchInput" placeholder="搜索标题或作者..."
+                                oninput="handleBrowseSearch(this.value)">
                         </div>
                         <!-- Page Size Selector - Requirements: 1.4 -->
-                        <select id="browsePageSize" onchange="changeBrowsePageSize(this.value)" class="filter-btn" style="cursor: pointer;">
+                        <select id="browsePageSize" onchange="changeBrowsePageSize(this.value)" class="filter-btn"
+                            style="cursor: pointer;">
                             <option value="20">20条/页</option>
                             <option value="50">50条/页</option>
                             <option value="100">100条/页</option>
@@ -387,8 +402,9 @@
                     <div class="filter-right">
                         <button class="btn btn-secondary" onclick="exportAllBrowse()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             导出全部
                         </button>
@@ -398,16 +414,18 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">浏览记录</h3>
-                        <button class="btn btn-danger" onclick="clearBrowseHistory()" style="padding: 6px 12px; font-size: 13px;">清空记录</button>
+                        <button class="btn btn-danger" onclick="clearBrowseHistory()"
+                            style="padding: 6px 12px; font-size: 13px;">清空记录</button>
                     </div>
-                    
+
                     <!-- Browse History Table - Requirements: 1.1 -->
                     <div id="browseHistoryList">
                         <table class="data-table" id="browseTable">
                             <thead>
                                 <tr>
                                     <th style="width: 40px;">
-                                        <input type="checkbox" id="browseSelectAll" onchange="toggleBrowseSelectAll(this.checked)">
+                                        <input type="checkbox" id="browseSelectAll"
+                                            onchange="toggleBrowseSelectAll(this.checked)">
                                     </th>
                                     <th style="width: 80px;">缩略图</th>
                                     <th>标题</th>
@@ -419,14 +437,15 @@
                             </thead>
                             <tbody id="browseTableBody">
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                                    <td colspan="7"
+                                        style="text-align: center; color: var(--text-secondary); padding: 40px;">
                                         加载中...
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination - Requirements: 1.4 -->
                     <div class="pagination" id="browsePagination"></div>
                 </div>
@@ -435,7 +454,8 @@
                 <div class="card video-detail-panel" id="browseDetailPanel" style="display: none;">
                     <div class="card-header">
                         <h3 class="card-title">视频详情</h3>
-                        <button class="btn btn-secondary" onclick="closeBrowseDetailPanel()" style="padding: 4px 12px;">关闭</button>
+                        <button class="btn btn-secondary" onclick="closeBrowseDetailPanel()"
+                            style="padding: 4px 12px;">关闭</button>
                     </div>
                     <div class="video-detail-content" id="browseDetailContent">
                         <!-- Detail content will be rendered here -->
@@ -453,15 +473,20 @@
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="exportSelectedDownloads()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
                                 导出
                             </button>
                             <button class="btn btn-danger" onclick="deleteSelectedDownloads()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                 </svg>
                                 删除
                             </button>
@@ -474,7 +499,8 @@
                 <div class="filter-bar">
                     <div class="filter-left">
                         <!-- Status Filter - Requirements: 2.4 -->
-                        <select id="downloadStatusFilter" onchange="filterDownloads()" class="filter-btn" style="cursor: pointer;">
+                        <select id="downloadStatusFilter" onchange="filterDownloads()" class="filter-btn"
+                            style="cursor: pointer;">
                             <option value="">全部状态</option>
                             <option value="completed">已完成</option>
                             <option value="failed">失败</option>
@@ -483,16 +509,20 @@
                         <!-- Date Range Filter - Requirements: 2.3 -->
                         <div class="date-picker">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
-                            <input type="date" id="downloadDateStart" onchange="filterDownloads()" style="border: none; background: transparent; font-size: 13px; width: 110px;">
+                            <input type="date" id="downloadDateStart" onchange="filterDownloads()"
+                                style="border: none; background: transparent; font-size: 13px; width: 110px;">
                             <span style="color: var(--text-muted);">-</span>
-                            <input type="date" id="downloadDateEnd" onchange="filterDownloads()" style="border: none; background: transparent; font-size: 13px; width: 110px;">
+                            <input type="date" id="downloadDateEnd" onchange="filterDownloads()"
+                                style="border: none; background: transparent; font-size: 13px; width: 110px;">
                         </div>
                         <!-- Page Size Selector -->
-                        <select id="downloadPageSize" onchange="changeDownloadPageSize(this.value)" class="filter-btn" style="cursor: pointer;">
+                        <select id="downloadPageSize" onchange="changeDownloadPageSize(this.value)" class="filter-btn"
+                            style="cursor: pointer;">
                             <option value="20">20条/页</option>
                             <option value="50">50条/页</option>
                             <option value="100">100条/页</option>
@@ -504,8 +534,9 @@
                     <div class="filter-right">
                         <button class="btn btn-primary" onclick="exportAllDownloads()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             导出
                         </button>
@@ -516,14 +547,15 @@
                     <div class="card-header">
                         <h3 class="card-title">下载记录</h3>
                     </div>
-                    
+
                     <!-- Download Records Table - Requirements: 2.1 -->
                     <div id="downloadRecordList" style="overflow-x: auto;">
                         <table class="data-table" id="downloadTable">
                             <thead>
                                 <tr>
                                     <th style="width: 40px;">
-                                        <input type="checkbox" id="downloadSelectAll" onchange="toggleDownloadSelectAll(this.checked)">
+                                        <input type="checkbox" id="downloadSelectAll"
+                                            onchange="toggleDownloadSelectAll(this.checked)">
                                     </th>
                                     <th style="width: 80px;">缩略图</th>
                                     <th>标题</th>
@@ -536,14 +568,15 @@
                             </thead>
                             <tbody id="downloadTableBody">
                                 <tr>
-                                    <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 40px;">
+                                    <td colspan="8"
+                                        style="text-align: center; color: var(--text-secondary); padding: 40px;">
                                         加载中...
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination -->
                     <div class="pagination" id="downloadPagination"></div>
                 </div>
@@ -552,7 +585,8 @@
                 <div class="card video-detail-panel" id="downloadDetailPanel" style="display: none;">
                     <div class="card-header">
                         <h3 class="card-title">下载详情</h3>
-                        <button class="btn btn-secondary" onclick="closeDownloadDetailPanel()" style="padding: 4px 12px;">关闭</button>
+                        <button class="btn btn-secondary" onclick="closeDownloadDetailPanel()"
+                            style="padding: 4px 12px;">关闭</button>
                     </div>
                     <div class="video-detail-content" id="downloadDetailContent">
                         <!-- Detail content will be rendered here -->
@@ -564,26 +598,24 @@
             <div class="page-view" id="page-batch">
                 <!-- 提示卡片 -->
                 <div class="alert alert-info" style="margin-bottom: 20px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; flex-shrink: 0;">
-                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width: 20px; height: 20px; flex-shrink: 0;">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
                     </svg>
                     <span>从浏览记录页面点击"批量下载"按钮可以快速导入视频列表</span>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">批量下载</h3>
                     </div>
                     <div class="form-group">
                         <label>视频列表（JSON 格式）</label>
-                        <textarea id="batchVideoList" rows="12" placeholder='请输入 JSON 格式的视频列表，或从浏览记录导入...' style="font-family: monospace; font-size: 13px;"></textarea>
+                        <textarea id="batchVideoList" rows="12" placeholder='请输入 JSON 格式的视频列表，或从浏览记录导入...'
+                            style="font-family: monospace; font-size: 13px;"></textarea>
                         <div class="form-hint">支持从浏览记录页面导出的 JSON 格式</div>
-                    </div>
-                    
-                    <!-- 格式检测提示 -->
-                    <div id="batchFormatDetection" class="alert alert-info" style="display: none; margin-top: 12px;">
-                        <strong>🔄 检测到账户导出格式</strong>
-                        <p id="batchFormatMessage" style="margin: 8px 0 0 0;"></p>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
@@ -594,21 +626,25 @@
                     <div style="display: flex; gap: 12px;">
                         <button class="btn btn-primary" onclick="startBatchDownload()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
                             开始下载
                         </button>
                         <button class="btn btn-secondary" onclick="loadBatchExample()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
                             </svg>
                             加载示例
                         </button>
-                        <button class="btn btn-secondary" onclick="document.getElementById('batchVideoList').value = ''">
+                        <button class="btn btn-secondary"
+                            onclick="document.getElementById('batchVideoList').value = ''">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
                             清空
                         </button>
@@ -621,18 +657,21 @@
                         <h3 class="card-title">下载进度</h3>
                         <span id="batchStatusText" style="font-size: 13px; color: var(--text-muted);">准备中...</span>
                     </div>
-                    
+
                     <!-- 进度条 -->
                     <div class="batch-progress-wrapper" style="margin-bottom: 24px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <span style="font-size: 13px; color: var(--text-secondary);">总进度</span>
-                            <span id="batchProgressText" style="font-size: 13px; font-weight: 600; color: var(--primary-color);">0%</span>
+                            <span id="batchProgressText"
+                                style="font-size: 13px; font-weight: 600; color: var(--primary-color);">0%</span>
                         </div>
                         <div style="background: var(--bg-hover); height: 10px; border-radius: 5px; overflow: hidden;">
-                            <div id="batchProgressBar" style="height: 100%; background: linear-gradient(90deg, var(--primary-color) 0%, #16a34a 100%); width: 0%; transition: width 0.3s ease; border-radius: 5px;"></div>
+                            <div id="batchProgressBar"
+                                style="height: 100%; background: linear-gradient(90deg, var(--primary-color) 0%, #16a34a 100%); width: 0%; transition: width 0.3s ease; border-radius: 5px;">
+                            </div>
                         </div>
                     </div>
-                    
+
                     <!-- 统计数据 -->
                     <div class="stats-grid" style="margin-bottom: 24px;">
                         <div class="stat-card" style="padding: 16px;">
@@ -644,25 +683,29 @@
                         <div class="stat-card" style="padding: 16px;">
                             <div class="stat-content">
                                 <div class="stat-label">已完成</div>
-                                <div class="stat-value" id="batchDone" style="font-size: 24px; color: var(--success-color);">0</div>
+                                <div class="stat-value" id="batchDone"
+                                    style="font-size: 24px; color: var(--success-color);">0</div>
                             </div>
                         </div>
                         <div class="stat-card" style="padding: 16px;">
                             <div class="stat-content">
                                 <div class="stat-label">失败</div>
-                                <div class="stat-value" id="batchFailed" style="font-size: 24px; color: var(--danger-color);">0</div>
+                                <div class="stat-value" id="batchFailed"
+                                    style="font-size: 24px; color: var(--danger-color);">0</div>
                             </div>
                         </div>
                         <div class="stat-card" style="padding: 16px;">
                             <div class="stat-content">
                                 <div class="stat-label">进行中</div>
-                                <div class="stat-value" id="batchRunning" style="font-size: 24px; color: var(--info-color);">0</div>
+                                <div class="stat-value" id="batchRunning"
+                                    style="font-size: 24px; color: var(--info-color);">0</div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- 当前任务信息 -->
-                    <div id="batchCurrentTask" class="queue-item downloading" style="display: none; margin-bottom: 20px;">
+
+                    <!-- 当前任务信息（保留兼容性，但隐藏） -->
+                    <div id="batchCurrentTask" class="queue-item downloading"
+                        style="display: none; margin-bottom: 20px;">
                         <div class="queue-item-info" style="flex: 1;">
                             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">正在下载</div>
                             <div id="batchCurrentTitle" class="queue-item-title"></div>
@@ -679,44 +722,75 @@
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- 所有正在下载的任务列表 -->
+                    <div id="batchDownloadingTasks" style="margin-bottom: 20px;"></div>
+
                     <!-- 操作按钮 -->
                     <div id="batchButtons" style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button class="btn btn-danger" id="batchCancelBtn" onclick="cancelBatchDownload()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="15" y1="9" x2="9" y2="15" />
+                                <line x1="9" y1="9" x2="15" y2="15" />
                             </svg>
                             取消下载
                         </button>
-                        <button class="btn btn-secondary" id="batchResetBtn" onclick="resetBatchDownload()" style="display: none;">
+                        <button class="btn btn-primary" id="batchResumeBtn" onclick="resumeBatchDownload()"
+                            style="display: none;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            继续下载
+                        </button>
+                        <button class="btn btn-secondary" id="batchClearBtn" onclick="clearBatchTasks()"
+                            style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                            清除任务
+                        </button>
+                        <button class="btn btn-secondary" id="batchResetBtn" onclick="resetBatchDownload()"
+                            style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10" />
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                             </svg>
                             重新开始
                         </button>
-                        <button class="btn btn-secondary" id="batchExportFailedBtn" onclick="exportFailedTasks()" style="display: none;">
+                        <button class="btn btn-secondary" id="batchExportFailedBtn" onclick="exportFailedTasks()"
+                            style="display: none;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             导出失败
                         </button>
-                        <button class="btn btn-primary" id="batchRetryFailedBtn" onclick="retryFailedTasks()" style="display: none;">
+                        <button class="btn btn-primary" id="batchRetryFailedBtn" onclick="retryFailedTasks()"
+                            style="display: none;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                <polyline points="23 4 23 10 17 10" />
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                             </svg>
                             重试失败
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- 下载日志 -->
                 <div class="card" id="batchLogCard" style="display: none;">
                     <div class="card-header">
                         <h3 class="card-title">下载日志</h3>
-                        <button class="btn btn-secondary" onclick="clearBatchLog()" style="padding: 6px 12px; font-size: 12px;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <button class="btn btn-secondary" onclick="clearBatchLog()"
+                            style="padding: 6px 12px; font-size: 12px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 14px; height: 14px;">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
                             清空
                         </button>
@@ -735,18 +809,21 @@
                         <h3 class="card-title">批量下载进度</h3>
                         <span id="queueBatchStatusText" style="font-size: 13px; color: var(--text-muted);">进行中...</span>
                     </div>
-                    
+
                     <!-- 进度条 -->
                     <div class="batch-progress-wrapper" style="margin-bottom: 24px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <span style="font-size: 13px; color: var(--text-secondary);">总进度</span>
-                            <span id="queueBatchProgressText" style="font-size: 13px; font-weight: 600; color: var(--primary-color);">0%</span>
+                            <span id="queueBatchProgressText"
+                                style="font-size: 13px; font-weight: 600; color: var(--primary-color);">0%</span>
                         </div>
                         <div style="background: var(--bg-hover); height: 10px; border-radius: 5px; overflow: hidden;">
-                            <div id="queueBatchProgressBar" style="height: 100%; background: linear-gradient(90deg, var(--primary-color) 0%, #16a34a 100%); width: 0%; transition: width 0.3s ease; border-radius: 5px;"></div>
+                            <div id="queueBatchProgressBar"
+                                style="height: 100%; background: linear-gradient(90deg, var(--primary-color) 0%, #16a34a 100%); width: 0%; transition: width 0.3s ease; border-radius: 5px;">
+                            </div>
                         </div>
                     </div>
-                    
+
                     <!-- 统计数据 -->
                     <div class="stats-grid" style="margin-bottom: 24px;">
                         <div class="stat-card" style="padding: 16px;">
@@ -758,25 +835,29 @@
                         <div class="stat-card" style="padding: 16px;">
                             <div class="stat-content">
                                 <div class="stat-label">已完成</div>
-                                <div class="stat-value" id="queueBatchDone" style="font-size: 24px; color: var(--success-color);">0</div>
+                                <div class="stat-value" id="queueBatchDone"
+                                    style="font-size: 24px; color: var(--success-color);">0</div>
                             </div>
                         </div>
                         <div class="stat-card" style="padding: 16px;">
                             <div class="stat-content">
                                 <div class="stat-label">失败</div>
-                                <div class="stat-value" id="queueBatchFailed" style="font-size: 24px; color: var(--danger-color);">0</div>
+                                <div class="stat-value" id="queueBatchFailed"
+                                    style="font-size: 24px; color: var(--danger-color);">0</div>
                             </div>
                         </div>
                         <div class="stat-card" style="padding: 16px;">
                             <div class="stat-content">
                                 <div class="stat-label">进行中</div>
-                                <div class="stat-value" id="queueBatchRunning" style="font-size: 24px; color: var(--info-color);">0</div>
+                                <div class="stat-value" id="queueBatchRunning"
+                                    style="font-size: 24px; color: var(--info-color);">0</div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- 当前任务信息 -->
-                    <div id="queueBatchCurrentTask" class="queue-item downloading" style="display: none; margin-bottom: 20px;">
+
+                    <!-- 当前任务信息（保留兼容性，但隐藏） -->
+                    <div id="queueBatchCurrentTask" class="queue-item downloading"
+                        style="display: none; margin-bottom: 20px;">
                         <div class="queue-item-info" style="flex: 1;">
                             <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">正在下载</div>
                             <div id="queueBatchCurrentTitle" class="queue-item-title"></div>
@@ -786,21 +867,44 @@
                         </div>
                         <div class="queue-item-progress">
                             <div class="queue-progress-bar">
-                                <div class="queue-progress-fill" id="queueBatchCurrentProgressBar" style="width: 0%;"></div>
+                                <div class="queue-progress-fill" id="queueBatchCurrentProgressBar" style="width: 0%;">
+                                </div>
                             </div>
                             <div class="queue-progress-text">
-                                <span id="queueBatchCurrentProgress">0%</span> · <span id="queueBatchCurrentSize">0 MB</span>
+                                <span id="queueBatchCurrentProgress">0%</span> · <span id="queueBatchCurrentSize">0
+                                    MB</span>
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- 所有正在下载的任务列表 -->
+                    <div id="queueBatchDownloadingTasks" style="margin-bottom: 20px;"></div>
+
                     <!-- 操作按钮 -->
                     <div id="queueBatchButtons" style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button class="btn btn-danger" id="queueBatchCancelBtn" onclick="cancelBatchDownload()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="15" y1="9" x2="9" y2="15" />
+                                <line x1="9" y1="9" x2="15" y2="15" />
                             </svg>
                             取消下载
+                        </button>
+                        <button class="btn btn-primary" id="queueBatchResumeBtn" onclick="resumeBatchDownload()"
+                            style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            继续下载
+                        </button>
+                        <button class="btn btn-secondary" id="queueBatchClearBtn" onclick="clearBatchTasks()"
+                            style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                            清除任务
                         </button>
                     </div>
                 </div>
@@ -833,20 +937,26 @@
                         <h3 class="card-title">下载队列</h3>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="pauseAllDownloads()" id="pauseAllBtn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <rect x="6" y="4" width="4" height="16" />
+                                    <rect x="14" y="4" width="4" height="16" />
                                 </svg>
                                 全部暂停
                             </button>
                             <button class="btn btn-primary" onclick="resumeAllDownloads()" id="resumeAllBtn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
                                 </svg>
                                 全部恢复
                             </button>
                             <button class="btn btn-danger" onclick="clearCompletedQueue()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    style="width: 16px; height: 16px;">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                 </svg>
                                 清除已完成
                             </button>
@@ -855,9 +965,12 @@
                     <div class="queue-list" id="downloadQueueList">
                         <div class="queue-empty-state">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                                <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                                <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                                <line x1="8" y1="6" x2="21" y2="6" />
+                                <line x1="8" y1="12" x2="21" y2="12" />
+                                <line x1="8" y1="18" x2="21" y2="18" />
+                                <line x1="3" y1="6" x2="3.01" y2="6" />
+                                <line x1="3" y1="12" x2="3.01" y2="12" />
+                                <line x1="3" y1="18" x2="3.01" y2="18" />
                             </svg>
                             <p>下载队列为空</p>
                             <p style="margin-top: 8px; font-size: 12px;">从浏览记录中选择视频添加到队列</p>
@@ -872,9 +985,11 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
-                                <path d="M4.93 4.93a10 10 0 0 1 14.14 0M7.76 7.76a6 6 0 0 1 8.48 0M10.59 10.59a2 2 0 0 1 2.82 0"/>
-                                <line x1="12" y1="12" x2="12" y2="12"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                                <path
+                                    d="M4.93 4.93a10 10 0 0 1 14.14 0M7.76 7.76a6 6 0 0 1 8.48 0M10.59 10.59a2 2 0 0 1 2.82 0" />
+                                <line x1="12" y1="12" x2="12" y2="12" />
                             </svg>
                             连接设置
                         </h3>
@@ -886,7 +1001,9 @@
                                 <div class="settings-item-desc">远程控制台连接本地服务的地址</div>
                             </div>
                             <div class="settings-item-control" style="width: 280px;">
-                                <input type="text" id="settingServiceUrl" value="http://127.0.0.1:2025" placeholder="http://127.0.0.1:2025" onblur="validateServiceUrl()" style="width: 100%;">
+                                <input type="text" id="settingServiceUrl" value="http://127.0.0.1:2025"
+                                    placeholder="http://127.0.0.1:2025" onblur="validateServiceUrl()"
+                                    style="width: 100%;">
                             </div>
                         </div>
                     </div>
@@ -894,15 +1011,16 @@
                     <div style="display: flex; gap: 12px;">
                         <button class="btn btn-secondary" onclick="testConnection()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                <polyline points="22 4 12 14.01 9 11.01"/>
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
                             </svg>
                             测试连接
                         </button>
                         <button class="btn btn-primary" onclick="saveServiceUrl()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
                             </svg>
                             保存地址
                         </button>
@@ -913,9 +1031,11 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
                             下载设置
                         </h3>
@@ -927,7 +1047,8 @@
                                 <div class="settings-item-desc">视频文件保存的目录路径</div>
                             </div>
                             <div class="settings-item-control" style="width: 280px;">
-                                <input type="text" id="settingDownloadDir" placeholder="downloads" onblur="validateDownloadDir()" style="width: 100%;">
+                                <input type="text" id="settingDownloadDir" placeholder="downloads"
+                                    onblur="validateDownloadDir()" style="width: 100%;">
                             </div>
                         </div>
                         <div class="settings-item">
@@ -936,7 +1057,8 @@
                                 <div class="settings-item-desc">超长视频下载时的分片大小 (1-100 MB)</div>
                             </div>
                             <div class="settings-item-control" style="width: 120px;">
-                                <input type="number" id="settingChunkSize" value="10" min="1" max="100" onblur="validateChunkSize()" style="width: 100%; text-align: center;">
+                                <input type="number" id="settingChunkSize" value="10" min="1" max="100"
+                                    onblur="validateChunkSize()" style="width: 100%; text-align: center;">
                             </div>
                         </div>
                         <div class="settings-item">
@@ -945,7 +1067,8 @@
                                 <div class="settings-item-desc">同时下载的最大任务数 (1-5)</div>
                             </div>
                             <div class="settings-item-control" style="width: 120px;">
-                                <input type="number" id="settingConcurrentLimit" value="3" min="1" max="5" onblur="validateConcurrentLimit()" style="width: 100%; text-align: center;">
+                                <input type="number" id="settingConcurrentLimit" value="3" min="1" max="5"
+                                    onblur="validateConcurrentLimit()" style="width: 100%; text-align: center;">
                             </div>
                         </div>
                     </div>
@@ -954,8 +1077,9 @@
                     <div class="form-error" id="concurrentLimitError"></div>
                     <button class="btn btn-primary" onclick="saveDownloadSettings()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
                         </svg>
                         保存下载设置
                     </button>
@@ -965,10 +1089,12 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
                             自动清理
                         </h3>
@@ -981,7 +1107,8 @@
                             </div>
                             <div class="settings-item-control">
                                 <div class="toggle-switch" id="autoCleanupToggle" onclick="toggleAutoCleanup()"></div>
-                                <input type="checkbox" id="settingAutoCleanup" style="display: none;" onchange="toggleAutoCleanupDays()">
+                                <input type="checkbox" id="settingAutoCleanup" style="display: none;"
+                                    onchange="toggleAutoCleanupDays()">
                             </div>
                         </div>
                         <div class="settings-item" id="autoCleanupDaysGroup">
@@ -990,15 +1117,17 @@
                                 <div class="settings-item-desc">超过此天数的记录将被自动删除 (1-365)</div>
                             </div>
                             <div class="settings-item-control" style="width: 100px;">
-                                <input type="number" id="settingAutoCleanupDays" value="30" min="1" max="365" style="width: 100%; text-align: center;">
+                                <input type="number" id="settingAutoCleanupDays" value="30" min="1" max="365"
+                                    style="width: 100%; text-align: center;">
                             </div>
                         </div>
                     </div>
                     <div class="form-error" id="autoCleanupDaysError"></div>
                     <button class="btn btn-primary" onclick="saveCleanupSettings()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
                         </svg>
                         保存清理设置
                     </button>
@@ -1008,10 +1137,11 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
-                                <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
                             </svg>
                             数据管理
                         </h3>
@@ -1019,23 +1149,26 @@
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="openCleanupDialog()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
                             按日期清理
                         </button>
                         <button class="btn btn-secondary" onclick="exportAllBrowse()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             导出浏览记录
                         </button>
                         <button class="btn btn-secondary" onclick="exportAllDownloads()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             导出下载记录
                         </button>
@@ -1046,9 +1179,12 @@
                 <div class="card" style="border: 2px solid var(--danger-light); background: var(--danger-light);">
                     <div class="card-header">
                         <h3 class="card-title" style="color: var(--danger-color);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                                <path
+                                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
                             </svg>
                             危险操作
                         </h3>
@@ -1057,19 +1193,23 @@
                     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                         <button class="btn btn-danger" onclick="clearAllBrowseHistory()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
                             清空浏览记录
                         </button>
                         <button class="btn btn-danger" onclick="clearAllDownloadRecords()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/><path d=""2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="" 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                             </svg>
                             清空下载记录
                         </button>
                         <button class="btn btn-secondary" onclick="resetSettings()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                <polyline points="23 4 23 10 17 10" />
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                             </svg>
                             重置设置
                         </button>
@@ -1096,11 +1236,12 @@
                                 <option value="TROUBLESHOOTING">故障排除</option>
                                 <option value="RELEASE_NOTES">更新日志</option>
                             </select>
-                            <button class="btn btn-secondary" onclick="window.open('https://github.com/your-repo', '_blank')">
+                            <button class="btn btn-secondary"
+                                onclick="window.open('https://github.com/your-repo', '_blank')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                    <polyline points="15 3 21 3 21 9"/>
-                                    <line x1="10" y1="14" x2="21" y2="3"/>
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                    <polyline points="15 3 21 3 21 9" />
+                                    <line x1="10" y1="14" x2="21" y2="3" />
                                 </svg>
                                 在 GitHub 查看
                             </button>
@@ -1108,12 +1249,13 @@
                     </div>
                     <div class="help-content" id="helpContent">
                         <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px;">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width: 48px; height: 48px; margin: 0 auto 16px;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <polyline points="10 9 9 9 8 9" />
                             </svg>
                             <p>加载中...</p>
                         </div>
@@ -1132,29 +1274,34 @@
             <div class="dialog-header">
                 <h3 class="dialog-title">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     导出数据
                 </h3>
                 <button class="dialog-close" onclick="closeExportDialog(event)" title="关闭">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
             </div>
             <div class="dialog-body">
                 <p class="dialog-description" id="exportDialogDescription">选择导出格式</p>
-                
+
                 <!-- Format Selection - Requirements: 4.1, 4.2 -->
                 <div class="export-format-options">
                     <label class="export-format-option selected" onclick="selectExportFormat('json')">
                         <input type="radio" name="exportFormat" value="json" checked>
                         <div class="export-format-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <path d="M8 13h2" />
+                                <path d="M8 17h2" />
+                                <path d="M14 13h2" />
+                                <path d="M14 17h2" />
                             </svg>
                         </div>
                         <div class="export-format-name">JSON</div>
@@ -1164,16 +1311,17 @@
                         <input type="radio" name="exportFormat" value="csv">
                         <div class="export-format-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="8" y1="13" x2="16" y2="13" />
+                                <line x1="8" y1="17" x2="16" y2="17" />
                             </svg>
                         </div>
                         <div class="export-format-name">CSV</div>
                         <div class="export-format-desc">表格格式，可用Excel打开</div>
                     </label>
                 </div>
-                
+
                 <!-- Export Info -->
                 <div class="export-info">
                     <div class="export-info-row">
@@ -1185,7 +1333,7 @@
                         <span class="export-info-value" id="exportCountValue">0 条</span>
                     </div>
                 </div>
-                
+
                 <!-- Progress Indicator - Requirements: 4.4 -->
                 <div class="export-progress" id="exportProgress">
                     <div class="export-progress-bar-container">
@@ -1197,9 +1345,10 @@
             <div class="dialog-footer">
                 <button class="btn btn-secondary" onclick="closeExportDialog(event)">取消</button>
                 <button class="btn btn-primary" id="exportConfirmBtn" onclick="confirmExport()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     导出
                 </button>
@@ -1213,14 +1362,17 @@
             <div class="dialog-header">
                 <h3 class="dialog-title danger">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
                     <span id="clearDataDialogTitle">确认清空</span>
                 </h3>
                 <button class="dialog-close" onclick="closeClearDataDialog(event)" title="关闭">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
             </div>
@@ -1228,15 +1380,15 @@
                 <!-- Warning Message -->
                 <div class="clear-warning">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
                     <div class="clear-warning-text">
                         <p id="clearDataWarningText">此操作不可撤销！</p>
                     </div>
                 </div>
-                
+
                 <!-- Statistics about what will be deleted -->
                 <div class="clear-stats-grid" id="clearDataStats">
                     <div class="clear-stat-item">
@@ -1244,7 +1396,7 @@
                         <span class="clear-stat-label">条记录</span>
                     </div>
                 </div>
-                
+
                 <!-- Delete files option (for downloads only) - Requirements: 5.3 -->
                 <div class="clear-files-option" id="clearFilesOption" style="display: none;">
                     <label class="checkbox-label">
@@ -1255,23 +1407,23 @@
                         勾选后将永久删除本地视频文件，释放磁盘空间
                     </div>
                 </div>
-                
+
                 <!-- Confirmation input -->
                 <div class="clear-confirm-input" style="margin-top: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-secondary);">
                         请输入 <strong style="color: var(--danger-color);">DELETE</strong> 确认删除：
                     </label>
-                    <input type="text" id="clearConfirmInput" placeholder="输入 DELETE 确认" 
-                           style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px;"
-                           oninput="validateClearConfirmInput()">
+                    <input type="text" id="clearConfirmInput" placeholder="输入 DELETE 确认"
+                        style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px;"
+                        oninput="validateClearConfirmInput()">
                 </div>
             </div>
             <div class="dialog-footer">
                 <button class="btn btn-secondary" onclick="closeClearDataDialog(event)">取消</button>
                 <button class="btn btn-danger" id="clearDataConfirmBtn" onclick="confirmClearData()" disabled>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     </svg>
                     清空数据
                 </button>
@@ -1285,21 +1437,23 @@
             <div class="dialog-header">
                 <h3 class="dialog-title warning">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
                     按日期清理数据
                 </h3>
                 <button class="dialog-close" onclick="closeCleanupDialog(event)" title="关闭">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
             </div>
             <div class="dialog-body">
                 <p class="dialog-description">删除指定日期之前的记录</p>
-                
+
                 <!-- Data Type Selection -->
                 <div class="form-group">
                     <label>清理类型</label>
@@ -1307,22 +1461,23 @@
                         <label class="cleanup-type-option selected" onclick="selectCleanupType('browse')">
                             <input type="radio" name="cleanupType" value="browse" checked>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
                             </svg>
                             <span>浏览记录</span>
                         </label>
                         <label class="cleanup-type-option" onclick="selectCleanupType('downloads')">
                             <input type="radio" name="cleanupType" value="downloads">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
                             <span>下载记录</span>
                         </label>
                     </div>
                 </div>
-                
+
                 <!-- Date Picker -->
                 <div class="cleanup-date-picker">
                     <label>截止日期</label>
@@ -1330,27 +1485,29 @@
                         <input type="date" id="cleanupDate" onchange="updateCleanupPreview()">
                         <div class="cleanup-date-shortcuts">
                             <button type="button" class="cleanup-shortcut-btn" onclick="setCleanupDate(7)">7天前</button>
-                            <button type="button" class="cleanup-shortcut-btn" onclick="setCleanupDate(30)">30天前</button>
-                            <button type="button" class="cleanup-shortcut-btn" onclick="setCleanupDate(90)">90天前</button>
+                            <button type="button" class="cleanup-shortcut-btn"
+                                onclick="setCleanupDate(30)">30天前</button>
+                            <button type="button" class="cleanup-shortcut-btn"
+                                onclick="setCleanupDate(90)">90天前</button>
                         </div>
                     </div>
                     <div class="form-hint">将删除此日期之前（不含当天）的所有记录</div>
                 </div>
-                
+
                 <!-- Preview -->
                 <div class="cleanup-preview" id="cleanupPreview">
                     <div class="cleanup-preview-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
                     </div>
                     <div class="cleanup-preview-text">
                         <span id="cleanupPreviewText">请选择截止日期</span>
                     </div>
                 </div>
-                
+
                 <!-- Delete files option (for downloads only) -->
                 <div class="clear-files-option" id="cleanupFilesOption" style="display: none;">
                     <label class="checkbox-label">
@@ -1362,9 +1519,10 @@
             <div class="dialog-footer">
                 <button class="btn btn-secondary" onclick="closeCleanupDialog(event)">取消</button>
                 <button class="btn btn-danger" id="cleanupConfirmBtn" onclick="confirmCleanup()" disabled>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width: 16px; height: 16px;">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     </svg>
                     执行清理
                 </button>
@@ -1377,7 +1535,8 @@
         <div class="lightbox-content" onclick="event.stopPropagation()">
             <button class="lightbox-close" onclick="closeLightbox(event)" title="关闭">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
             </button>
             <img class="lightbox-image" id="lightboxImage" src="" alt="">
@@ -1394,7 +1553,8 @@
             <div class="video-player-title" id="videoPlayerTitle"></div>
             <button class="video-player-close" onclick="closeVideoPlayer()" title="关闭">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
             </button>
         </div>
@@ -1408,9 +1568,9 @@
                 <!-- Error State -->
                 <div class="video-player-error" id="videoPlayerError" style="display: none;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
                     <span class="video-player-error-text" id="videoPlayerErrorText">无法加载视频</span>
                 </div>
@@ -1427,38 +1587,53 @@
                     </div>
                     <div class="video-controls-row">
                         <div class="video-controls-left">
-                            <button class="video-control-btn" onclick="togglePlayPause()" id="playPauseBtn" title="播放/暂停">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="playIcon">
-                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                            <button class="video-control-btn" onclick="togglePlayPause()" id="playPauseBtn"
+                                title="播放/暂停">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    id="playIcon">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
                                 </svg>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="pauseIcon" style="display: none;">
-                                    <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    id="pauseIcon" style="display: none;">
+                                    <rect x="6" y="4" width="4" height="16" />
+                                    <rect x="14" y="4" width="4" height="16" />
                                 </svg>
                             </button>
                             <div class="video-volume-container">
                                 <button class="video-control-btn" onclick="toggleMute()" id="volumeBtn" title="静音">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="volumeIcon">
-                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        id="volumeIcon">
+                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
                                     </svg>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="muteIcon" style="display: none;">
-                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                                        <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        id="muteIcon" style="display: none;">
+                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                        <line x1="23" y1="9" x2="17" y2="15" />
+                                        <line x1="17" y1="9" x2="23" y2="15" />
                                     </svg>
                                 </button>
-                                <input type="range" class="video-volume-slider" id="volumeSlider" min="0" max="1" step="0.1" value="1" oninput="changeVolume(this.value)">
+                                <input type="range" class="video-volume-slider" id="volumeSlider" min="0" max="1"
+                                    step="0.1" value="1" oninput="changeVolume(this.value)">
                             </div>
                             <span class="video-time" id="videoTime">00:00 / 00:00</span>
                         </div>
                         <div class="video-controls-right">
-                            <button class="video-control-btn" onclick="toggleFullscreen()" id="fullscreenBtn" title="全屏">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="fullscreenIcon">
-                                    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-                                    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                            <button class="video-control-btn" onclick="toggleFullscreen()" id="fullscreenBtn"
+                                title="全屏">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    id="fullscreenIcon">
+                                    <polyline points="15 3 21 3 21 9" />
+                                    <polyline points="9 21 3 21 3 15" />
+                                    <line x1="21" y1="3" x2="14" y2="10" />
+                                    <line x1="3" y1="21" x2="10" y2="14" />
                                 </svg>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="exitFullscreenIcon" style="display: none;">
-                                    <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
-                                    <line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    id="exitFullscreenIcon" style="display: none;">
+                                    <polyline points="4 14 10 14 10 20" />
+                                    <polyline points="20 10 14 10 14 4" />
+                                    <line x1="14" y1="10" x2="21" y2="3" />
+                                    <line x1="3" y1="21" x2="10" y2="14" />
                                 </svg>
                             </button>
                         </div>
@@ -1470,7 +1645,7 @@
 
     <!-- Message Toast Area -->
     <div class="message-area" id="messageArea"></div>
-    
+
     <!-- JS Modules -->
     <script src="js/core.js?v=1764987636"></script>
     <script src="js/ui.js?v=1764987636"></script>
@@ -1478,257 +1653,6 @@
     <script src="js/pages-download.js?v=1764987636"></script>
     <script src="js/pages-settings.js?v=1764987636"></script>
     <script src="js/video-player.js?v=1764987636"></script>
-    
-    <!-- Connection Check and Token Verification -->
-    <script>
-        (function() {
-            // 获取 API 基础地址
-            function getApiBaseUrl() {
-                const urlParams = new URLSearchParams(window.location.search);
-                
-                // 1. 优先从 URL 参数获取 apiUrl
-                let apiUrl = urlParams.get('apiUrl');
-                if (apiUrl) {
-                    // 移除末尾的斜杠
-                    apiUrl = apiUrl.replace(/\/+$/, '');
-                    // 保存到 localStorage
-                    try {
-                        localStorage.setItem('wx_channel_service_url', apiUrl);
-                    } catch (e) {
-                        console.warn('无法保存 API 地址到 localStorage:', e);
-                    }
-                    return apiUrl;
-                }
-                
-                // 2. 从 localStorage 获取
-                try {
-                    apiUrl = localStorage.getItem('wx_channel_service_url');
-                    if (apiUrl) {
-                        return apiUrl;
-                    }
-                } catch (e) {
-                    console.warn('无法从 localStorage 读取 API 地址:', e);
-                }
-                
-                // 3. 使用默认地址（从当前页面推断或使用默认值）
-                // 如果当前页面是 http://example.com/console.html，尝试使用 http://127.0.0.1:2025
-                // 或者从当前页面的 origin 推断
-                const defaultUrl = 'http://127.0.0.1:2025';
-                return defaultUrl;
-            }
-            
-            // 获取 token 的辅助函数
-            function getToken() {
-                // 1. 优先从 URL 参数获取
-                const urlParams = new URLSearchParams(window.location.search);
-                let token = urlParams.get('token');
-                
-                // 2. 如果 URL 中没有，从 Cookie 获取
-                if (!token) {
-                    const cookies = document.cookie.split(';');
-                    for (let cookie of cookies) {
-                        const [name, value] = cookie.trim().split('=');
-                        if (name === 'web_console_token') {
-                            token = value;
-                            break;
-                        }
-                    }
-                }
-                
-                return token || '';
-            }
-            
-            // 保存 token 到 Cookie
-            function saveTokenToCookie(token) {
-                if (token) {
-                    document.cookie = 'web_console_token=' + token + '; path=/';
-                }
-            }
-            
-            // 从 URL 参数获取 token（如果有）
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlToken = urlParams.get('token');
-            
-            // 如果 URL 中有 token，保存到 Cookie
-            if (urlToken) {
-                saveTokenToCookie(urlToken);
-            }
-            
-            // 获取 API 基础地址
-            const apiBaseUrl = getApiBaseUrl();
-            
-            // 页面加载时检查连接和 token
-            async function checkConnectionAndToken() {
-                try {
-                    // 1. 先检查连接状态
-                    const healthUrl = `${apiBaseUrl}/api/health`;
-                    const healthResponse = await fetch(healthUrl);
-                    if (!healthResponse.ok) {
-                        throw new Error('服务连接异常');
-                    }
-                    
-                    const healthData = await healthResponse.json();
-                    // API 返回格式：{ success: true, data: { status: "ok", ... } }
-                    if (!healthData.success || (healthData.data && healthData.data.status !== 'ok')) {
-                        throw new Error('服务状态异常');
-                    }
-                    
-                    // 2. 连接正常，获取 token 并验证
-                    const token = getToken();
-                    const verifyUrl = `${apiBaseUrl}/api/console/verify-token`;
-                    const verifyResponse = await fetch(verifyUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: token })
-                    });
-                    
-                    // 检查响应状态
-                    if (!verifyResponse.ok) {
-                        // 如果是 401，说明 token 无效或未提供
-                        if (verifyResponse.status === 401) {
-                            const errorData = await verifyResponse.json().catch(() => ({}));
-                            // 如果配置了 token 但验证失败，重定向到简单版
-                            if (errorData.error === 'invalid token') {
-                                console.warn('Token 验证失败，重定向到简单版控制台');
-                                window.location.href = '/wx_channel';
-                                return;
-                            }
-                        } else {
-                            throw new Error(`Token 验证请求失败: ${verifyResponse.status}`);
-                        }
-                    }
-                    
-                    const verifyData = await verifyResponse.json();
-                    
-                    // 如果配置了 token 但验证失败，重定向到简单版
-                    if (!verifyData.success || !verifyData.data.valid) {
-                        if (verifyData.error === 'invalid token' || (verifyData.data && !verifyData.data.valid)) {
-                            console.warn('Token 验证失败，重定向到简单版控制台');
-                            window.location.href = '/wx_channel';
-                            return;
-                        }
-                    }
-                } catch (err) {
-                    console.error('连接检查失败:', err);
-                    // 连接失败，重定向到简单版控制台
-                    window.location.href = '/wx_channel';
-                }
-            }
-            
-            // 执行检查
-            checkConnectionAndToken();
-        })();
-    </script>
-    
-    <!-- 防剽窃保护：禁用控制台和右键 -->
-    <script>
-        (function() {
-            // 禁用右键菜单
-            document.addEventListener('contextmenu', function(e) {
-                e.preventDefault();
-                return false;
-            });
-            
-            // 禁用文本选择（但允许输入框）
-            document.addEventListener('selectstart', function(e) {
-                if (e.target.tagName !== 'INPUT' && 
-                    e.target.tagName !== 'TEXTAREA' && 
-                    !e.target.isContentEditable) {
-                    e.preventDefault();
-                    return false;
-                }
-            });
-            
-            // 禁用拖拽
-            document.addEventListener('dragstart', function(e) {
-                e.preventDefault();
-                return false;
-            });
-            
-            // 禁用开发者工具快捷键
-            document.addEventListener('keydown', function(e) {
-                // 禁用 F12
-                if (e.key === 'F12') {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // 禁用 Ctrl+Shift+I (Chrome DevTools)
-                if (e.ctrlKey && e.shiftKey && e.key === 'I') {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // 禁用 Ctrl+Shift+J (Chrome Console)
-                if (e.ctrlKey && e.shiftKey && e.key === 'J') {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // 禁用 Ctrl+Shift+C (Chrome Element Inspector)
-                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // 禁用 Ctrl+U (查看源代码)
-                if (e.ctrlKey && e.key === 'u') {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // 禁用 Ctrl+S (保存页面)
-                if (e.ctrlKey && e.key === 's') {
-                    e.preventDefault();
-                    return false;
-                }
-                
-                // 禁用 Ctrl+P (打印)
-                if (e.ctrlKey && e.key === 'p') {
-                    e.preventDefault();
-                    return false;
-                }
-            });
-            
-            // 检测控制台是否被打开
-            let devtools = {
-                open: false,
-                orientation: null
-            };
-            
-            const threshold = 160;
-            setInterval(function() {
-                if (window.outerHeight - window.innerHeight > threshold || 
-                    window.outerWidth - window.innerWidth > threshold) {
-                    if (!devtools.open) {
-                        devtools.open = true;
-                        // 检测到控制台打开，可以执行相应操作
-                        document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:24px;color:#333;">请关闭开发者工具后刷新页面</div>';
-                    }
-                } else {
-                    devtools.open = false;
-                }
-            }, 500);
-            
-            // 禁用控制台相关 API
-            (function() {
-                const noop = function() {};
-                const methods = ['log', 'debug', 'info', 'warn', 'error', 'assert', 'dir', 'dirxml', 
-                                'group', 'groupEnd', 'time', 'timeEnd', 'count', 'trace', 'profile', 'profileEnd'];
-                methods.forEach(function(method) {
-                    if (window.console && window.console[method]) {
-                        window.console[method] = noop;
-                    }
-                });
-            })();
-            
-            // 禁用调试器
-            setInterval(function() {
-                (function() {
-                    return false;
-                })('devtools');
-            }, 1000);
-        })();
-    </script>
 </body>
+
 </html>

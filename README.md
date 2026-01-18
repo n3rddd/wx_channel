@@ -45,7 +45,7 @@
 
 ## 🎬 效果演示
 
-![主界面](jietu.png)
+![主界面](assets/jietu.png)
 
 ### Web 控制台界面
 
@@ -59,7 +59,7 @@
 
 | web控制台亮色 | web控制台暗色 |
 | --- | --- | 
-|  ![亮色](liang.png)  | ![暗色](an.png)  |
+|  ![亮色](assets/liang.png)  | ![暗色](assets/an.png)  |
 
 > 💡 **提示**：更多功能说明请查看 [文档目录](docs/README.md) 和 [Web 控制台指南](docs/WEB_CONSOLE.md)
 
@@ -101,7 +101,7 @@ wx_channel.exe
    - 页面会自动注入下载按钮
    - 点击按钮即可下载
 
-📖 **详细教程**：[安装指南](docs/INSTALLATION.md) | [文档目录](docs/README.md)
+📖 **详细教程**：[使用文档](docs/README.md) | [开发文档](dev-docs/README.md) | [更新日志](dev-docs/CHANGELOG.md)
 
 ---
 
@@ -249,33 +249,42 @@ WX_CHANNEL_DOWNLOAD_TIMEOUT=30
 ### 进阶功能
 - [批量下载](docs/BATCH_DOWNLOAD_GUIDE.md) - 批量下载完整指南
 - [Web 控制台](docs/WEB_CONSOLE.md) - Web 界面使用指南（推荐）
-- [评论采集](docs/COMMENT_CAPTURE.md) - 评论采集功能
-- [API 文档](docs/API.md) - HTTP API 接口
+- [API 文档](docs/API_README.md) - HTTP API 接口
+- [API 快速开始](docs/API_QUICK_START.md) - API 快速上手
 
 ### 开发文档
 - [构建指南](docs/BUILD.md) - 从源码构建
 - [配置说明](docs/CONFIGURATION.md) - 所有配置选项
-- [故障排除](docs/TROUBLESHOOTING.md) - 问题诊断
+- [更新日志](dev-docs/CHANGELOG.md) - 版本更新记录
+- [技术文档](dev-docs/README.md) - 更多开发文档
 
 ---
 
-## 🎉 最新版本 v5.2.11
+## 🎉 最新版本 v5.3.0
 
-### 🐛 问题修复
+### ✨ 新增功能
 
-- 🔧 **修复windows文件名规范**：修改windows文件夹命名规范，优化符号.的异常
-- 📝 **web控制台界面优化**：优化简单版，增加完整版验证功能
+- � ***通用批量下载组件**：统一的批量下载 UI，所有页面共享同一套逻辑，减少 400+ 行重复代码
+- 🏠 **Home 页面分类视频下载**：支持批量下载分类视频（美食、生活等），自动识别 Tab，数据累积去重
+- 📊 **视频列表优化**：16:9 封面比例，时长显示在封面上，完整信息（大小、日期、作者），分页显示
+- 💪 **下载功能增强**：强制重新下载、取消下载、实时进度显示、导出列表（含密钥）、清空列表
+- 🔍 **搜索页面增强**：显示直播数据（带红色标签），自动清理标题 HTML 标签，统一数据格式
+- 📸 **页面快照功能**：恢复页面快照保存功能，保存 HTML 和 metadata
 
-### 🌟 Web 控制台功能
+### � 问题修复管
 
-- 🎨 **现代化界面**：侧边栏导航 + 卡片式布局，支持深色模式
-- 📊 **浏览记录管理**：查看、搜索、筛选所有浏览过的视频
-- 📥 **下载记录管理**：查看历史下载记录和统计信息
-- 📋 **下载队列管理**：实时管理下载任务，支持暂停/恢复/删除
-- 🔍 **搜索筛选功能**：实时搜索 + 时间范围筛选 + 状态筛选
-- 📤 **数据导出**：支持 JSON/CSV 格式导出，便于数据分析
+- � **修复下载显示*错误**：添加 HTTP 状态码检查，修复下载成功但显示失败的问题
+- � ***修复复选框禁用**：优化变量作用域，修复视频复选框被错误禁用
+- 🔧 **修复标题 HTML 元素**：自动清理标题中的 HTML 标签（如 `<em class="highlight">`）
+- 🔧 **修复直播数据过滤**：搜索页正确显示直播数据，带红色标签且禁用下载
 
-📝 **完整更新日志**：[版本更新说明](docs/RELEASE_NOTES.md)
+### 📚 文档优化
+
+- 📁 **文档重新整理**：用户文档和开发文档分离，结构更清晰
+- 🎨 **资源文件管理**：创建 assets 目录，集中管理所有图片资源
+- 🔗 **链接修复**：修复所有文档链接，确保引用正确
+
+📝 **完整更新日志**：[版本更新说明](dev-docs/CHANGELOG.md)
 
 ---
 
@@ -290,7 +299,7 @@ WX_CHANNEL_DOWNLOAD_TIMEOUT=30
 
 ### 赞赏支持
 
-<img src="zanshang.png" width="300" alt="赞赏码">
+<img src="assets/zanshang.png" width="300" alt="赞赏码">
 
 ### 赞赏名单
 
@@ -350,7 +359,7 @@ WX_CHANNEL_DOWNLOAD_TIMEOUT=30
 
 ### 交流群
 
-<img src="wxq.png" width="300" alt="微信交流群">
+<img src="assets/wxq.png" width="300" alt="微信交流群">
 
 ---
 

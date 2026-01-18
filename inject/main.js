@@ -1,3 +1,4 @@
+console.log('[main.js] 脚本开始加载...');
 const defaultRandomAlphabet =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 function __wx_uid__() {
@@ -964,31 +965,39 @@ function findElm(fn, timeout = 5000) {
 
 // 专门针对Home页面的下载按钮插入函数（参考GitHub原项目实现）
 async function __insert_download_btn_to_home_page() {
+  console.log('[下载按钮] 开始注入下载按钮...');
   var $container = await findElm(function () {
     return document.querySelector(".slides-scroll");
   });
   if (!$container) {
+    console.log('[下载按钮] 未找到 .slides-scroll 容器');
     return false;
   }
+  console.log('[下载按钮] 找到 .slides-scroll 容器');
   var cssText = $container.style.cssText;
   var re = /translate3d\([0-9]{1,}px, {0,1}-{0,1}([0-9]{1,})%/;
   var matched = cssText.match(re);
   var idx = matched ? Number(matched[1]) / 100 : 0;
-  console.log('[]idx', idx);
+  console.log('[下载按钮] 当前幻灯片索引:', idx);
   var $item = document.querySelectorAll(".slides-item")[idx];
   if (!$item) {
+    console.log('[下载按钮] 未找到 .slides-item[' + idx + ']');
     return false;
   }
+  console.log('[下载按钮] 找到 .slides-item[' + idx + ']');
   var $existing_download_btn = $item.querySelector(".download-icon");
   if ($existing_download_btn) {
+    console.log('[下载按钮] 下载按钮已存在，跳过注入');
     return true;
   }
   var $elm3 = await findElm(function () {
     return $item.getElementsByClassName("click-box op-item")[0];
   });
   if (!$elm3) {
+    console.log('[下载按钮] 未找到 .click-box.op-item 元素');
     return false;
   }
+  console.log('[下载按钮] 找到 .click-box.op-item 元素');
   const $parent = $elm3.parentElement;
   if ($parent) {
     // Home页面只创建下载按钮，不创建评论按钮
@@ -1030,11 +1039,13 @@ async function __insert_download_btn_to_home_page() {
     };
     // Home页面只插入下载按钮
     $parent.appendChild(__wx_channels_video_download_btn__);
+    console.log('[下载按钮] ✅ 下载按钮注入成功!');
     __wx_log({
       msg: "注入下载按钮成功!",
     });
     return true;
   }
+  console.log('[下载按钮] 未找到父元素');
   return false;
 }
 
@@ -1445,7 +1456,9 @@ function __debug_event_listeners() {
 }
 
 // 使用setTimeout延迟执行，而不是setInterval
+console.log('[main.js] 准备延迟执行 insert_download_btn...');
 setTimeout(async () => {
+  console.log('[main.js] 开始执行 insert_download_btn');
   insert_download_btn();
   // __try_capture_initial_home_data 将在按钮注入成功后自动调用
   

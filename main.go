@@ -21,11 +21,13 @@ import (
 	"github.com/qtgolang/SunnyNet/SunnyNet"
 	"github.com/qtgolang/SunnyNet/public"
 
+	"wx_channel/internal/api"
 	"wx_channel/internal/config"
 	"wx_channel/internal/database"
 	"wx_channel/internal/handlers"
 	"wx_channel/internal/storage"
 	"wx_channel/internal/utils"
+	"wx_channel/internal/websocket"
 	"wx_channel/pkg/argv"
 	"wx_channel/pkg/certificate"
 	"wx_channel/pkg/proxy"
@@ -40,8 +42,41 @@ var file_saver_js []byte
 //go:embed lib/jszip.min.js
 var zip_js []byte
 
-//go:embed inject/main.js
-var main_js []byte
+//go:embed inject/core.js
+var core_js []byte
+
+//go:embed inject/decrypt.js
+var decrypt_js []byte
+
+//go:embed inject/download.js
+var download_js []byte
+
+//go:embed inject/home.js
+var home_js []byte
+
+//go:embed inject/feed.js
+var feed_js []byte
+
+//go:embed inject/profile.js
+var profile_js []byte
+
+//go:embed inject/search.js
+var search_js []byte
+
+//go:embed inject/batch_download.js
+var batch_download_js []byte
+
+//go:embed inject/lib/mitt.umd.js
+var mitt_js []byte
+
+//go:embed inject/eventbus.js
+var eventbus_js []byte
+
+//go:embed inject/utils.js
+var utils_js []byte
+
+//go:embed inject/api_client.js
+var api_client_js []byte
 
 var Sunny = SunnyNet.NewSunny()
 var cfg *config.Config
@@ -62,6 +97,10 @@ var (
 	commentHandler    *handlers.CommentHandler
 	consoleAPIHandler *handlers.ConsoleAPIHandler
 	webSocketHandler  *handlers.WebSocketHandler
+	
+	// WebSocket 和 API 服务
+	wsHub         *websocket.Hub
+	searchService *api.SearchService
 )
 
 // downloadRecordsHeader CSV 文件的表头
@@ -90,8 +129,6 @@ func initDownloadRecords() error {
 
 	return nil
 }
-
-// 已废弃的辅助函数：addDownloadRecord 已移除，避免未使用告警
 
 // saveDynamicHTML 保存动态页面的完整HTML内容，按日期和域名归档
 func saveDynamicHTML(htmlContent string, parsedURL *url.URL, fullURL string, timestamp int64) {
@@ -176,7 +213,6 @@ func saveDynamicHTML(htmlContent string, parsedURL *url.URL, fullURL string, tim
 
 	baseName := strings.Join(filenameParts, "_")
 	// CleanFilename 已经处理了长度限制，这里不需要再次限制
-
 	fileName := fmt.Sprintf("%s_%s.html", saveTime.Format("150405"), baseName)
 	targetPath := utils.GenerateUniqueFilename(dateDir, fileName, 100)
 
@@ -198,120 +234,24 @@ func saveDynamicHTML(htmlContent string, parsedURL *url.URL, fullURL string, tim
 	if err == nil {
 		metaPath := strings.TrimSuffix(targetPath, filepath.Ext(targetPath)) + ".meta.json"
 		if err := os.WriteFile(metaPath, metaBytes, 0644); err != nil {
-			utils.HandleError(err, "保存页面HTML元数据")
+			utils.HandleError(err, "保存页面元数据")
 		}
-	} else {
-		utils.HandleError(err, "序列化页面HTML元数据")
 	}
 
-	relativePath, err := filepath.Rel(downloadsDir, targetPath)
-	if err != nil {
-		relativePath = targetPath
-	}
-	utils.Info("页面HTML已保存: %s -> %s", fullURL, relativePath)
-	utils.LogInfo("[页面快照] URL=%s | 路径=%s", fullURL, relativePath)
+	utils.LogInfo("[页面快照] 已保存: %s", targetPath)
+	
+	// 显示保存路径（类似分享链接的格式）
+	utils.PrintSeparator()
+	color.Blue("💾 页面快照已保存")
+	utils.PrintSeparator()
+	utils.PrintLabelValue("📁", "保存路径", targetPath)
+	utils.PrintLabelValue("🔗", "页面链接", fullURL)
+	utils.PrintSeparator()
+	fmt.Println()
+	fmt.Println()
 }
 
-// saveSearchData 保存搜索页面的结构化数据（账号信息、直播数据、动态数据）
-func saveSearchData(fullURL string, parsedURL *url.URL, keyword string, profiles, liveResults, feedResults []map[string]interface{}, timestamp int64) {
-	if fileManager == nil {
-		utils.Warn("文件管理器未初始化，无法保存搜索数据: %s", fullURL)
-		return
-	}
-	if cfg == nil {
-		utils.Warn("配置尚未初始化，无法保存搜索数据: %s", fullURL)
-		return
-	}
-	// 检查是否启用搜索数据保存
-	if !cfg.SaveSearchData {
-		return
-	}
-	if parsedURL == nil {
-		utils.Warn("解析搜索页面URL失败，跳过保存: %s", fullURL)
-		return
-	}
-
-	if cfg.SaveDelay > 0 {
-		time.Sleep(cfg.SaveDelay)
-	}
-
-	saveTime := time.Now()
-	if timestamp > 0 {
-		saveTime = time.Unix(0, timestamp*int64(time.Millisecond))
-	}
-
-	downloadsDir, err := utils.ResolveDownloadDir(cfg.DownloadsDir)
-	if err != nil {
-		utils.HandleError(err, "解析下载目录用于保存搜索数据")
-		return
-	}
-
-	if err := utils.EnsureDir(downloadsDir); err != nil {
-		utils.HandleError(err, "创建下载目录用于保存搜索数据")
-		return
-	}
-
-	searchDataRoot := filepath.Join(downloadsDir, "search_data")
-	if err := utils.EnsureDir(searchDataRoot); err != nil {
-		utils.HandleError(err, "创建搜索数据根目录")
-		return
-	}
-
-	// 去掉域名文件夹，直接使用日期目录
-	dateDir := filepath.Join(searchDataRoot, saveTime.Format("2006-01-02"))
-	if err := utils.EnsureDir(dateDir); err != nil {
-		utils.HandleError(err, "创建搜索数据日期目录")
-		return
-	}
-
-	// 构建文件名
-	sanitizedKeyword := utils.CleanFilename(keyword)
-	if sanitizedKeyword == "" {
-		sanitizedKeyword = "search"
-	}
-	// CleanFilename 已经处理了长度限制（100字符），这里不需要再次限制
-
-	fileName := fmt.Sprintf("%s_%s.json", saveTime.Format("150405"), sanitizedKeyword)
-	targetPath := utils.GenerateUniqueFilename(dateDir, fileName, 100)
-
-	// 构建数据结构
-	searchData := map[string]interface{}{
-		"url":          fullURL,
-		"host":         parsedURL.Host,
-		"path":         parsedURL.Path,
-		"query":        parsedURL.RawQuery,
-		"keyword":      keyword,
-		"profiles":     profiles,
-		"liveResults":  liveResults,
-		"feedResults":  feedResults,
-		"profileCount": len(profiles),
-		"liveCount":    len(liveResults),
-		"feedCount":    len(feedResults),
-		"saved_at":     saveTime.Format(time.RFC3339),
-		"timestamp":    timestamp,
-	}
-
-	// 保存JSON数据
-	dataBytes, err := json.MarshalIndent(searchData, "", "  ")
-	if err != nil {
-		utils.HandleError(err, "序列化搜索数据")
-		return
-	}
-
-	if err := os.WriteFile(targetPath, dataBytes, 0644); err != nil {
-		utils.HandleError(err, "保存搜索数据")
-		return
-	}
-
-	relativePath, err := filepath.Rel(downloadsDir, targetPath)
-	if err != nil {
-		relativePath = targetPath
-	}
-	utils.Info("搜索数据已保存: 关键词=%s, 账号=%d, 直播=%d, 动态=%d -> %s",
-		keyword, len(profiles), len(liveResults), len(feedResults), relativePath)
-	utils.LogInfo("[搜索数据] 关键词=%s | 账号=%d | 直播=%d | 动态=%d | 路径=%s",
-		keyword, len(profiles), len(liveResults), len(feedResults), relativePath)
-}
+// 已废弃的辅助函数：addDownloadRecord 已移除，避免未使用告警
 
 // printDownloadRecordInfo 打印下载记录信息
 func printDownloadRecordInfo() {
@@ -443,9 +383,12 @@ func printTitle() {
 	color.Yellow("    微信视频号下载助手 v%s", cfg.Version)
 	color.Yellow("    项目地址：https://github.com/nobiyou/wx_channel")
 	color.Green("    v%s 更新要点：", cfg.Version)
-	color.Green("    • 修复windows下载文件夹命名规范")
-	color.Green("    • 优化web控制台界面UI")
-	color.Green("    • 增加完整版web控制台验证功能")
+	color.Green("    • 通用批量下载组件 - 统一UI，减少400+行代码")
+	color.Green("    • Home页面分类视频批量下载 - 支持美食、生活等分类")
+	color.Green("    • 视频列表优化 - 完整信息显示，分页浏览")
+	color.Green("    • 下载功能增强 - 强制重下、取消、实时进度")
+	color.Green("    • 搜索页面增强 - 显示直播数据，HTML标签清理")
+	color.Green("    • Bug修复 - 下载显示、复选框、标题清理等")
 	fmt.Println()
 }
 
@@ -544,7 +487,7 @@ func main() {
 	}
 
 	// 初始化脚本处理器
-	scriptHandler = handlers.NewScriptHandler(cfg, main_js, zip_js, file_saver_js, v)
+	scriptHandler = handlers.NewScriptHandler(cfg, core_js, decrypt_js, download_js, home_js, feed_js, profile_js, search_js, batch_download_js, zip_js, file_saver_js, mitt_js, eventbus_js, utils_js, api_client_js, v)
 
 	// 初始化批量下载处理器
 	if csvManager != nil {
@@ -677,6 +620,12 @@ func main() {
 		}
 		utils.LogSystemStart(port, proxyMode)
 
+		// 初始化 WebSocket Hub 和 API 服务
+		wsHub = websocket.NewHub()
+		go wsHub.Run()
+		searchService = api.NewSearchService(wsHub)
+		utils.Info("✓ WebSocket Hub 已初始化")
+
 		// 启动WebSocket服务器（使用代理端口+1）
 		// Requirements: 14.5 - WebSocket endpoint for real-time updates
 		wsPort := port + 1
@@ -745,7 +694,7 @@ func handleConsoleAPI(Conn *SunnyNet.HttpConn) {
 func startWebSocketServer(wsPort int) {
 	mux := http.NewServeMux()
 
-	// WebSocket endpoint
+	// WebSocket endpoint for real-time updates (原有的)
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		// Set CORS headers for WebSocket upgrade
 		origin := r.Header.Get("Origin")
@@ -755,6 +704,10 @@ func startWebSocketServer(wsPort int) {
 		}
 		handlers.ServeWs(w, r)
 	})
+
+	// WebSocket endpoint for API calls (新的)
+	wsHandler := websocket.NewHandler(wsHub)
+	mux.HandleFunc("/ws/api", wsHandler.ServeHTTP)
 
 	// Health check for WebSocket server
 	mux.HandleFunc("/ws/health", func(w http.ResponseWriter, r *http.Request) {
@@ -767,6 +720,39 @@ func startWebSocketServer(wsPort int) {
 		})
 	})
 
+	// API endpoints
+	if searchService != nil {
+		utils.Info("✓ 注册 API 路由...")
+		
+		// 搜索账号
+		mux.HandleFunc("/api/channels/contact/search", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			searchService.SearchContact(w, r)
+		})
+
+		// 获取账号视频列表
+		mux.HandleFunc("/api/channels/contact/feed/list", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			searchService.GetFeedList(w, r)
+		})
+
+		// 获取视频详情
+		mux.HandleFunc("/api/channels/feed/profile", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			searchService.GetFeedProfile(w, r)
+		})
+
+		// 获取 API 状态
+		mux.HandleFunc("/api/channels/status", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			searchService.GetStatus(w, r)
+		})
+		
+		utils.Info("✓ API 路由注册完成")
+	} else {
+		utils.Warn("⚠️  searchService 为 nil，API 路由未注册")
+	}
+
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", wsPort),
 		Handler: mux,
@@ -774,6 +760,11 @@ func startWebSocketServer(wsPort int) {
 
 	utils.Info("🔌 WebSocket服务已启动，端口: %d", wsPort)
 	utils.Info("   WebSocket地址: ws://127.0.0.1:%d/ws", wsPort)
+	utils.Info("   API WebSocket: ws://127.0.0.1:%d/ws/api", wsPort)
+	if searchService != nil {
+		utils.Info("   搜索API: http://127.0.0.1:%d/api/channels/contact/search?keyword=xxx", wsPort)
+		utils.Info("   状态API: http://127.0.0.1:%d/api/channels/status", wsPort)
+	}
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		utils.Warn("WebSocket服务启动失败: %v", err)
@@ -900,9 +891,9 @@ func HttpCallback(Conn *SunnyNet.HttpConn) {
 
 		// 提供 Web 控制台
 		if path == "/console" || path == "/console/" {
-			consoleHTML, err := os.ReadFile("web/index.html")
+			consoleHTML, err := os.ReadFile("web/console.html")
 			if err != nil {
-				utils.Warn("无法读取 web/index.html: %v", err)
+				utils.Warn("无法读取 web/console.html: %v", err)
 				Conn.StopRequest(404, "Console not found", http.Header{})
 				return
 			}
@@ -1011,42 +1002,6 @@ func HttpCallback(Conn *SunnyNet.HttpConn) {
 					utils.HandleError(err, "解析页面内容URL")
 				} else {
 					saveDynamicHTML(contentData.HTML, parsedURL, contentData.URL, contentData.Timestamp)
-				}
-			}
-			headers := http.Header{}
-			headers.Set("Content-Type", "application/json")
-			headers.Set("__debug", "fake_resp")
-			Conn.StopRequest(200, "{}", headers)
-			return
-		}
-
-		// 保存搜索页面结构化数据的API端点
-		if path == "/__wx_channels_api/save_search_data" {
-			var searchData struct {
-				URL         string                   `json:"url"`
-				Keyword     string                   `json:"keyword"`
-				Profiles    []map[string]interface{} `json:"profiles"`    // 账号信息
-				LiveResults []map[string]interface{} `json:"liveResults"` // 直播数据
-				FeedResults []map[string]interface{} `json:"feedResults"` // 动态数据
-				Timestamp   int64                    `json:"timestamp"`
-			}
-			body, err := io.ReadAll(Conn.Request.Body)
-			if err != nil {
-				utils.HandleError(err, "读取save_search_data请求体")
-				return
-			}
-			if err := Conn.Request.Body.Close(); err != nil {
-				utils.HandleError(err, "关闭请求体")
-			}
-			err = json.Unmarshal(body, &searchData)
-			if err != nil {
-				utils.HandleError(err, "解析搜索数据")
-			} else {
-				parsedURL, err := url.Parse(searchData.URL)
-				if err != nil {
-					utils.HandleError(err, "解析搜索页面URL")
-				} else {
-					saveSearchData(searchData.URL, parsedURL, searchData.Keyword, searchData.Profiles, searchData.LiveResults, searchData.FeedResults, searchData.Timestamp)
 				}
 			}
 			headers := http.Header{}

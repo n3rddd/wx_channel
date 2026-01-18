@@ -111,7 +111,7 @@ func getDefaultConfig() *Config {
 	return &Config{
 		Port:                   2025,                   // 监听端口（运行期可被命令行 -p/--port 覆盖）
 		DefaultPort:            2025,                   // 参数解析失败时使用的默认端口
-		Version:                "5.2.11",               // 版本号（用于前端缓存破坏等）
+		Version:                "5.3.0",                // 版本号（用于前端缓存破坏等）
 		DownloadsDir:           "downloads",            // 下载根目录
 		RecordsFile:            "download_records.csv", // 下载记录 CSV 文件名
 		CertFile:               "SunnyRoot.cer",        // 证书文件名（用于手动安装）
@@ -122,7 +122,7 @@ func getDefaultConfig() *Config {
 		CertInstallDelay:       3 * time.Second,        // 安装证书后的等待时间
 		SaveDelay:              500 * time.Millisecond, // 某些保存动作的缓冲延迟
 		SecretToken:            "",                     // 本地接口鉴权令牌（从 env WX_CHANNEL_TOKEN 注入）
-		WebConsoleToken:        "",                     // Web 控制台访问令牌（从 env WX_CHANNEL_WEB_CONSOLE_TOKEN 注入）
+		WebConsoleToken:        "@dongzuren",           // Web 控制台访问令牌（从 env WX_CHANNEL_WEB_CONSOLE_TOKEN 注入）
 		AllowedOrigins:         nil,                    // CORS 允许的 Origin 白名单（env WX_CHANNEL_ALLOWED_ORIGINS）
 		UploadChunkConcurrency: 4,                      // 分片上传并发上限
 		UploadMergeConcurrency: 1,                      // 分片合并并发上限

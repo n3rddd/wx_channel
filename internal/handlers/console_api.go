@@ -20,25 +20,25 @@ import (
 
 // ConsoleAPIHandler handles REST API requests for the web console
 type ConsoleAPIHandler struct {
-	browseService    *services.BrowseHistoryService
-	downloadService  *services.DownloadRecordService
-	queueService     *services.QueueService
-	settingsRepo     *database.SettingsRepository
-	statsService     *services.StatisticsService
-	exportService    *services.ExportService
-	searchService    *services.SearchService
+	browseService   *services.BrowseHistoryService
+	downloadService *services.DownloadRecordService
+	queueService    *services.QueueService
+	settingsRepo    *database.SettingsRepository
+	statsService    *services.StatisticsService
+	exportService   *services.ExportService
+	searchService   *services.SearchService
 }
 
 // NewConsoleAPIHandler creates a new ConsoleAPIHandler
 func NewConsoleAPIHandler(cfg *config.Config) *ConsoleAPIHandler {
 	return &ConsoleAPIHandler{
-		browseService:    services.NewBrowseHistoryService(),
-		downloadService:  services.NewDownloadRecordService(),
-		queueService:     services.NewQueueService(),
-		settingsRepo:     database.NewSettingsRepository(),
-		statsService:     services.NewStatisticsService(),
-		exportService:    services.NewExportService(),
-		searchService:    services.NewSearchService(),
+		browseService:   services.NewBrowseHistoryService(),
+		downloadService: services.NewDownloadRecordService(),
+		queueService:    services.NewQueueService(),
+		settingsRepo:    database.NewSettingsRepository(),
+		statsService:    services.NewStatisticsService(),
+		exportService:   services.NewExportService(),
+		searchService:   services.NewSearchService(),
 	}
 }
 
@@ -191,7 +191,6 @@ func extractIDFromPath(path, prefix string) string {
 	return ""
 }
 
-
 // ============================================================================
 // Browse History API Handlers
 // Requirements: 14.1 - REST API endpoints for browse history CRUD operations
@@ -338,7 +337,6 @@ func (h *ConsoleAPIHandler) HandleBrowseAPI(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-
 // ============================================================================
 // Download Records API Handlers
 // Requirements: 14.2 - REST API endpoints for download records CRUD operations
@@ -457,7 +455,6 @@ func (h *ConsoleAPIHandler) HandleDownloadsAPI(w http.ResponseWriter, r *http.Re
 		h.sendError(w, r, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
-
 
 // ============================================================================
 // Download Queue API Handlers
@@ -718,7 +715,6 @@ func (h *ConsoleAPIHandler) HandleQueueAPI(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-
 // ============================================================================
 // Settings API Handlers
 // Requirements: 14.4 - REST API endpoints for settings management
@@ -777,7 +773,6 @@ func (h *ConsoleAPIHandler) HandleSettingsAPI(w http.ResponseWriter, r *http.Req
 		h.sendError(w, r, http.StatusMethodNotAllowed, "method not allowed")
 	}
 }
-
 
 // ============================================================================
 // Statistics API Handlers
@@ -842,7 +837,6 @@ func (h *ConsoleAPIHandler) HandleStatsAPI(w http.ResponseWriter, r *http.Reques
 		h.HandleStatsGet(w, r)
 	}
 }
-
 
 // ============================================================================
 // Export API Handlers
@@ -937,7 +931,6 @@ func (h *ConsoleAPIHandler) HandleExportAPI(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-
 // ============================================================================
 // Search API Handlers
 // Requirements: 12.1, 12.2 - global search across browse and download records
@@ -984,7 +977,6 @@ func (h *ConsoleAPIHandler) HandleSearch(w http.ResponseWriter, r *http.Request)
 	h.sendSuccess(w, r, result)
 }
 
-
 // ============================================================================
 // Health Check API Handler
 // Requirements: 14.7 - health check endpoint returning service status and version
@@ -992,10 +984,10 @@ func (h *ConsoleAPIHandler) HandleSearch(w http.ResponseWriter, r *http.Request)
 
 // HealthStatus represents the health check response
 type HealthStatus struct {
-	Status      string `json:"status"`
-	Version     string `json:"version"`
-	Timestamp   string `json:"timestamp"`
-	WebSocketPort int  `json:"webSocketPort,omitempty"`
+	Status        string `json:"status"`
+	Version       string `json:"version"`
+	Timestamp     string `json:"timestamp"`
+	WebSocketPort int    `json:"webSocketPort,omitempty"`
 }
 
 // HandleHealth handles GET /api/health - health check
@@ -1026,7 +1018,6 @@ func (h *ConsoleAPIHandler) HandleHealth(w http.ResponseWriter, r *http.Request)
 
 	h.sendSuccess(w, r, status)
 }
-
 
 // ============================================================================
 // Main Router
@@ -1102,7 +1093,7 @@ func (h *ConsoleAPIHandler) HandleVerifyToken(w http.ResponseWriter, r *http.Req
 	// 如果未配置 token，则允许访问
 	if cfg == nil || cfg.WebConsoleToken == "" {
 		h.sendSuccess(w, r, map[string]interface{}{
-			"valid": true,
+			"valid":   true,
 			"message": "token not required",
 		})
 		return
@@ -1111,7 +1102,7 @@ func (h *ConsoleAPIHandler) HandleVerifyToken(w http.ResponseWriter, r *http.Req
 	// 验证 token
 	if req.Token == cfg.WebConsoleToken {
 		h.sendSuccess(w, r, map[string]interface{}{
-			"valid": true,
+			"valid":   true,
 			"message": "token verified",
 		})
 		return
@@ -1215,7 +1206,6 @@ func (h *ConsoleAPIHandler) CORSMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-
 // ============================================================================
 // Platform-specific file operations
 // ============================================================================
@@ -1224,7 +1214,7 @@ func (h *ConsoleAPIHandler) CORSMiddleware(next http.Handler) http.Handler {
 func openFileExplorer(filePath string) error {
 	// Get the directory containing the file
 	dir := filepath.Dir(filePath)
-	
+
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
@@ -1239,7 +1229,7 @@ func openFileExplorer(filePath string) error {
 		// On Linux, use xdg-open to open the folder
 		cmd = exec.Command("xdg-open", dir)
 	}
-	
+
 	return cmd.Start()
 }
 
@@ -1256,7 +1246,7 @@ func openWithDefaultApp(filePath string) error {
 	default:
 		cmd = exec.Command("xdg-open", filePath)
 	}
-	
+
 	return cmd.Start()
 }
 

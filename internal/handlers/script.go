@@ -14,25 +14,46 @@ import (
 
 	"wx_channel/pkg/util"
 
-	"github.com/fatih/color"
 	"github.com/qtgolang/SunnyNet/SunnyNet"
 )
 
 // ScriptHandler JavaScript注入处理器
 type ScriptHandler struct {
-	mainJS      []byte
-	zipJS       []byte
-	fileSaverJS []byte
-	version     string
+	coreJS           []byte
+	decryptJS        []byte
+	downloadJS       []byte
+	homeJS           []byte
+	feedJS           []byte
+	profileJS        []byte
+	searchJS         []byte
+	batchDownloadJS  []byte
+	zipJS            []byte
+	fileSaverJS      []byte
+	mittJS           []byte
+	eventbusJS       []byte
+	utilsJS          []byte
+	apiClientJS      []byte
+	version          string
 }
 
 // NewScriptHandler 创建脚本处理器
-func NewScriptHandler(cfg *config.Config, mainJS, zipJS, fileSaverJS []byte, version string) *ScriptHandler {
+func NewScriptHandler(cfg *config.Config, coreJS, decryptJS, downloadJS, homeJS, feedJS, profileJS, searchJS, batchDownloadJS, zipJS, fileSaverJS, mittJS, eventbusJS, utilsJS, apiClientJS []byte, version string) *ScriptHandler {
 	return &ScriptHandler{
-		mainJS:      mainJS,
-		zipJS:       zipJS,
-		fileSaverJS: fileSaverJS,
-		version:     version,
+		coreJS:          coreJS,
+		decryptJS:       decryptJS,
+		downloadJS:      downloadJS,
+		homeJS:          homeJS,
+		feedJS:          feedJS,
+		profileJS:       profileJS,
+		searchJS:        searchJS,
+		batchDownloadJS: batchDownloadJS,
+		zipJS:           zipJS,
+		fileSaverJS:     fileSaverJS,
+		mittJS:          mittJS,
+		eventbusJS:      eventbusJS,
+		utilsJS:         utilsJS,
+		apiClientJS:     apiClientJS,
+		version:         version,
 	}
 }
 
@@ -119,19 +140,7 @@ func (h *ScriptHandler) HandleJavaScriptResponse(Conn *SunnyNet.HttpConn, host, 
 		Conn.Response.Body = io.NopCloser(bytes.NewBuffer([]byte(content)))
 		return true
 	}
-	content, handled = h.handleVuexStores(Conn, path, content)
-	if handled {
-		return true
-	}
-	content, handled = h.handleGlobalPublish(Conn, path, content)
-	if handled {
-		return true
-	}
 	content, handled = h.handleConnectPublish(Conn, path, content)
-	if handled {
-		return true
-	}
-	content, handled = h.handleFinderHomePublish(Conn, path, content)
 	if handled {
 		return true
 	}
@@ -145,8 +154,23 @@ func (h *ScriptHandler) buildInjectedScripts(path string) string {
 	// 日志面板脚本（必须在最前面，以便拦截所有console输出）- 所有页面都需要
 	logPanelScript := h.getLogPanelScript()
 
-	// 主脚本 - 所有页面都需要
-	script := fmt.Sprintf(`<script>%s</script>`, string(h.mainJS))
+	// 事件系统脚本（mitt + eventbus + utils）- 必须在主脚本之前加载
+	mittScript := fmt.Sprintf(`<script>%s</script>`, string(h.mittJS))
+	eventbusScript := fmt.Sprintf(`<script>%s</script>`, string(h.eventbusJS))
+	utilsScript := fmt.Sprintf(`<script>%s</script>`, string(h.utilsJS))
+
+	// API 客户端脚本 - 必须在其他脚本之前加载
+	apiClientScript := fmt.Sprintf(`<script>%s</script>`, string(h.apiClientJS))
+
+	// 模块化脚本 - 按依赖顺序加载
+	coreScript := fmt.Sprintf(`<script>%s</script>`, string(h.coreJS))
+	decryptScript := fmt.Sprintf(`<script>%s</script>`, string(h.decryptJS))
+	downloadScript := fmt.Sprintf(`<script>%s</script>`, string(h.downloadJS))
+	batchDownloadScript := fmt.Sprintf(`<script>%s</script>`, string(h.batchDownloadJS))
+	feedScript := fmt.Sprintf(`<script>%s</script>`, string(h.feedJS))
+	profileScript := fmt.Sprintf(`<script>%s</script>`, string(h.profileJS))
+	searchScript := fmt.Sprintf(`<script>%s</script>`, string(h.searchJS))
+	homeScript := fmt.Sprintf(`<script>%s</script>`, string(h.homeJS))
 
 	// 预加载FileSaver.js库 - 所有页面都需要
 	preloadScript := h.getPreloadScript()
@@ -160,14 +184,17 @@ func (h *ScriptHandler) buildInjectedScripts(path string) string {
 	// 保存页面内容脚本 - 所有页面都需要（用于保存快照）
 	savePageContentScript := h.getSavePageContentScript()
 
+	// 基础脚本（所有页面都需要）
+	baseScripts := logPanelScript + mittScript + eventbusScript + utilsScript + apiClientScript + coreScript + decryptScript + downloadScript + batchDownloadScript + feedScript + profileScript + searchScript + homeScript + preloadScript + downloadTrackerScript + captureUrlScript + savePageContentScript
+
 	// 根据页面路径决定是否注入特定脚本
 	var pageSpecificScripts string
 
 	switch path {
 	case "/web/pages/home":
-		// Home页面：只注入视频缓存监控脚本
+		// Home页面：注入视频缓存监控脚本
 		pageSpecificScripts = h.getVideoCacheNotificationScript()
-		utils.LogInfo("[脚本注入] Home页面 - 注入视频缓存监控脚本")
+		utils.LogInfo("[脚本注入] Home页面 - 注入事件系统和视频缓存监控脚本")
 
 	case "/web/pages/profile":
 		// Profile页面（视频列表）：不需要特定脚本
@@ -180,9 +207,9 @@ func (h *ScriptHandler) buildInjectedScripts(path string) string {
 		utils.LogInfo("[脚本注入] Feed页面 - 注入视频缓存监控和评论采集脚本")
 
 	case "/web/pages/s":
-		// 搜索页面：不需要额外的特定脚本（搜索数据采集已包含在savePageContentScript中）
-		pageSpecificScripts = ""
-		utils.LogInfo("[脚本注入] 搜索页面 - 注入基础脚本（含搜索数据采集）")
+		// 搜索页面：注入搜索模块
+		pageSpecificScripts = searchScript
+		utils.LogInfo("[脚本注入] 搜索页面 - 注入搜索模块（事件系统）")
 
 	default:
 		// 其他页面：不注入页面特定脚本
@@ -190,7 +217,20 @@ func (h *ScriptHandler) buildInjectedScripts(path string) string {
 		utils.LogInfo("[脚本注入] 其他页面 - 仅注入基础脚本")
 	}
 
-	return logPanelScript + script + preloadScript + downloadTrackerScript + captureUrlScript + savePageContentScript + pageSpecificScripts
+	// 初始化脚本（延迟执行）
+	initScript := `<script>
+console.log('[init] 开始初始化...');
+setTimeout(function() {
+	console.log('[init] 执行 insert_download_btn');
+	if (typeof insert_download_btn === 'function') {
+		insert_download_btn();
+	} else {
+		console.error('[init] insert_download_btn 函数未定义');
+	}
+}, 800);
+</script>`
+
+	return baseScripts + pageSpecificScripts + initScript
 }
 
 // getPreloadScript 获取预加载FileSaver.js库的脚本
@@ -522,1423 +562,6 @@ func (h *ScriptHandler) getSavePageContentScript() string {
 	setTimeout(() => {
 		window.__wx_channels_save_page_content();
 	}, 10000);
-	
-	// 搜索页面数据采集功能
-	window.__wx_channels_collect_search_data = function() {
-		try {
-			// 检查是否是搜索页面
-			var isSearchPage = window.location.pathname.includes('/pages/s');
-			if (!isSearchPage) {
-				return;
-			}
-			
-			console.log('[搜索数据采集] 检测到搜索页面，开始初始化...');
-			
-			// 记录日志
-			if (window.__wx_log) {
-				window.__wx_log({
-					msg: '搜索页面已加载'
-				});
-			}
-			
-			// HTML标签清理函数
-			var cleanHtmlTags = function(text) {
-				if (!text || typeof text !== 'string') return text || '';
-				// 创建临时DOM元素来移除HTML标签
-				var tempDiv = document.createElement('div');
-				tempDiv.innerHTML = text;
-				var cleaned = tempDiv.textContent || tempDiv.innerText || '';
-				// 处理HTML实体
-				var htmlEntities = {
-					'&nbsp;': ' ',
-					'&amp;': '&',
-					'&lt;': '<',
-					'&gt;': '>',
-					'&quot;': '"',
-					'&apos;': "'",
-					'&#39;': "'",
-					'&#34;': '"'
-				};
-				for (var entity in htmlEntities) {
-					cleaned = cleaned.replace(new RegExp(entity, 'g'), htmlEntities[entity]);
-				}
-				// 移除剩余的HTML实体
-				cleaned = cleaned.replace(/&[a-zA-Z0-9#]+;/g, '');
-				return cleaned.trim();
-			};
-			
-			// 初始化批量下载面板（复用主页的批量下载功能）
-			try {
-				if (typeof window.__wx_channels_profile_collector !== 'undefined') {
-					// 设置页面类型为搜索页面
-					window.__wx_channels_profile_collector.pageType = 'search';
-					// 初始化批量下载UI（如果还没有初始化）
-					if (!document.getElementById('wx-channels-batch-download-ui')) {
-						window.__wx_channels_profile_collector.addBatchDownloadUI();
-						console.log('[搜索数据采集] ✓ 批量下载面板已初始化');
-					}
-				} else {
-					console.warn('[搜索数据采集] 批量下载面板未加载，请确保 inject/main.js 已加载');
-				}
-			} catch (e) {
-				console.error('[搜索数据采集] 初始化批量下载面板失败:', e);
-			}
-			
-			// 从URL中提取搜索关键词
-			var urlParams = new URLSearchParams(window.location.search);
-			var keyword = urlParams.get('q') || '';
-			if (keyword) {
-				keyword = decodeURIComponent(keyword);
-			}
-			console.log('[搜索数据采集] 搜索关键词:', keyword);
-			
-			// 记录搜索关键词
-			if (window.__wx_log && keyword) {
-				window.__wx_log({
-					msg: '搜索关键词: ' + keyword
-				});
-			}
-			
-			// 存储拦截到的搜索数据
-			var interceptedSearchData = {
-				profiles: [],
-				liveResults: [],
-				feedResults: [],
-				lastUpdate: 0
-			};
-			
-			// 拦截fetch请求（备用方案，主要依赖Store采集）
-			var originalFetch = window.fetch;
-			window.fetch = function() {
-				var args = Array.prototype.slice.call(arguments);
-				var url = args[0];
-				
-				// 检查是否是搜索相关的API（静默拦截，不输出日志）
-				if (typeof url === 'string' && (url.includes('/search') || url.includes('/finder/search') || url.includes('searchResult'))) {
-					return originalFetch.apply(this, args).then(function(response) {
-						// 克隆响应以便读取
-						var clonedResponse = response.clone();
-						clonedResponse.json().then(function(data) {
-							try {
-								// 静默处理API响应（备用方案）
-								// 尝试从响应中提取数据
-								if (data && typeof data === 'object') {
-									// 检查各种可能的数据结构
-									if (data.data) {
-										var responseData = data.data;
-										if (Array.isArray(responseData.profileResults) || Array.isArray(responseData.accountResults)) {
-											var accounts = responseData.profileResults || responseData.accountResults || [];
-											accounts.forEach(function(account) {
-												if (account && account.id && !interceptedSearchData.profiles.find(function(p) { return p.id === account.id; })) {
-													interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(account)));
-												}
-											});
-										}
-										if (Array.isArray(responseData.liveResults)) {
-											responseData.liveResults.forEach(function(live) {
-												if (live && live.id && !interceptedSearchData.liveResults.find(function(l) { return l.id === live.id; })) {
-													interceptedSearchData.liveResults.push(JSON.parse(JSON.stringify(live)));
-												}
-											});
-										}
-										if (Array.isArray(responseData.feedResults)) {
-											responseData.feedResults.forEach(function(feed) {
-												if (feed && feed.id && !interceptedSearchData.feedResults.find(function(f) { return f.id === feed.id; })) {
-													interceptedSearchData.feedResults.push(JSON.parse(JSON.stringify(feed)));
-												}
-											});
-										}
-										// 如果响应数据直接是数组
-										if (Array.isArray(responseData)) {
-											responseData.forEach(function(item) {
-												if (item && item.id) {
-													if (item.type === 'profile' || item.type === 'account') {
-														if (!interceptedSearchData.profiles.find(function(p) { return p.id === item.id; })) {
-															interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(item)));
-														}
-													} else if (item.type === 'live') {
-														if (!interceptedSearchData.liveResults.find(function(l) { return l.id === item.id; })) {
-															interceptedSearchData.liveResults.push(JSON.parse(JSON.stringify(item)));
-														}
-													} else if (item.type === 'feed' || item.type === 'video') {
-														if (!interceptedSearchData.feedResults.find(function(f) { return f.id === item.id; })) {
-															interceptedSearchData.feedResults.push(JSON.parse(JSON.stringify(item)));
-														}
-													}
-												}
-											});
-										}
-									}
-									// 如果数据直接在根级别
-									if (Array.isArray(data.profileResults) || Array.isArray(data.accountResults)) {
-										var accounts = data.profileResults || data.accountResults || [];
-										accounts.forEach(function(account) {
-											if (account && account.id && !interceptedSearchData.profiles.find(function(p) { return p.id === account.id; })) {
-												interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(account)));
-											}
-										});
-									}
-									if (Array.isArray(data.liveResults)) {
-										data.liveResults.forEach(function(live) {
-											if (live && live.id && !interceptedSearchData.liveResults.find(function(l) { return l.id === live.id; })) {
-												interceptedSearchData.liveResults.push(JSON.parse(JSON.stringify(live)));
-											}
-										});
-									}
-									if (Array.isArray(data.feedResults)) {
-										data.feedResults.forEach(function(feed) {
-											if (feed && feed.id && !interceptedSearchData.feedResults.find(function(f) { return f.id === feed.id; })) {
-												interceptedSearchData.feedResults.push(JSON.parse(JSON.stringify(feed)));
-											}
-										});
-									}
-									
-									interceptedSearchData.lastUpdate = Date.now();
-									// 自动保存拦截到的数据（仅在Store采集失败时作为备用）
-									// 注意：Store采集是主要方式，API拦截仅作为备用
-									if (interceptedSearchData.profiles.length > 0 || 
-									    interceptedSearchData.liveResults.length > 0 || 
-									    interceptedSearchData.feedResults.length > 0) {
-										console.log('[搜索数据采集] [API备用] 从API提取到数据 - 账号:', interceptedSearchData.profiles.length, 
-										            ', 直播:', interceptedSearchData.liveResults.length, 
-										            ', 动态:', interceptedSearchData.feedResults.length);
-										saveInterceptedSearchData();
-									}
-								}
-							} catch (err) {
-								console.error('[搜索数据采集] 解析API响应失败:', err);
-							}
-						}).catch(function(err) {
-							console.warn('[搜索数据采集] 读取API响应失败:', err);
-						});
-						return response;
-					});
-				}
-				return originalFetch.apply(this, args);
-			};
-			
-			// 拦截XMLHttpRequest（备用方案，主要依赖Store采集）
-			var originalXHROpen = XMLHttpRequest.prototype.open;
-			var originalXHRSend = XMLHttpRequest.prototype.send;
-			XMLHttpRequest.prototype.open = function(method, url) {
-				this._url = url;
-				return originalXHROpen.apply(this, arguments);
-			};
-			XMLHttpRequest.prototype.send = function() {
-				var xhr = this;
-				var url = xhr._url;
-				if (url && (url.includes('/search') || url.includes('/finder/search') || url.includes('searchResult'))) {
-					// 静默拦截XHR请求（备用方案）
-					xhr.addEventListener('load', function() {
-						if (xhr.readyState === 4 && xhr.status === 200) {
-							try {
-								var data = JSON.parse(xhr.responseText);
-								// 使用与fetch相同的解析逻辑
-								if (data && typeof data === 'object') {
-									if (data.data) {
-										var responseData = data.data;
-										if (Array.isArray(responseData.profileResults) || Array.isArray(responseData.accountResults)) {
-											var accounts = responseData.profileResults || responseData.accountResults || [];
-											accounts.forEach(function(account) {
-												if (account && account.id && !interceptedSearchData.profiles.find(function(p) { return p.id === account.id; })) {
-													interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(account)));
-												}
-											});
-										}
-										if (Array.isArray(responseData.liveResults)) {
-											responseData.liveResults.forEach(function(live) {
-												if (live && live.id && !interceptedSearchData.liveResults.find(function(l) { return l.id === live.id; })) {
-													interceptedSearchData.liveResults.push(JSON.parse(JSON.stringify(live)));
-												}
-											});
-										}
-										if (Array.isArray(responseData.feedResults)) {
-											responseData.feedResults.forEach(function(feed) {
-												if (feed && feed.id && !interceptedSearchData.feedResults.find(function(f) { return f.id === feed.id; })) {
-													interceptedSearchData.feedResults.push(JSON.parse(JSON.stringify(feed)));
-												}
-											});
-										}
-									}
-									interceptedSearchData.lastUpdate = Date.now();
-									// 仅在Store采集失败时作为备用
-									if (interceptedSearchData.profiles.length > 0 || 
-									    interceptedSearchData.liveResults.length > 0 || 
-									    interceptedSearchData.feedResults.length > 0) {
-										console.log('[搜索数据采集] [XHR备用] 从XHR提取到数据');
-										saveInterceptedSearchData();
-									}
-								}
-							} catch (err) {
-								console.error('[搜索数据采集] 解析XHR响应失败:', err);
-							}
-						}
-					});
-				}
-				return originalXHRSend.apply(this, arguments);
-			};
-			
-			// 保存拦截到的搜索数据
-			// 记录上次保存的数据数量，用于判断是否有变化
-			var lastSavedCount = {
-				profiles: 0,
-				liveResults: 0,
-				feedResults: 0
-			};
-			
-			var saveInterceptedSearchData = function(forceSave) {
-				// 检查数据是否有变化
-				var hasChange = forceSave || 
-					interceptedSearchData.profiles.length !== lastSavedCount.profiles ||
-					interceptedSearchData.liveResults.length !== lastSavedCount.liveResults ||
-					interceptedSearchData.feedResults.length !== lastSavedCount.feedResults;
-				
-				if (!hasChange) {
-					// 数据没有变化，不保存
-					return;
-				}
-				
-				if (interceptedSearchData.profiles.length > 0 || 
-				    interceptedSearchData.liveResults.length > 0 || 
-				    interceptedSearchData.feedResults.length > 0) {
-					console.log('[搜索数据采集] 保存拦截到的数据 - 账号:', interceptedSearchData.profiles.length, 
-					            ', 直播:', interceptedSearchData.liveResults.length, 
-					            ', 动态:', interceptedSearchData.feedResults.length);
-					fetch('/__wx_channels_api/save_search_data', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							url: window.location.href,
-							keyword: keyword,
-							profiles: interceptedSearchData.profiles,
-							liveResults: interceptedSearchData.liveResults,
-							feedResults: interceptedSearchData.feedResults,
-							timestamp: Date.now()
-						})
-					}).then(function(response) {
-						if (response.ok) {
-							console.log('[搜索数据采集] ✓ 拦截数据已保存');
-							// 更新最后保存的数据数量
-							lastSavedCount = {
-								profiles: interceptedSearchData.profiles.length,
-								liveResults: interceptedSearchData.liveResults.length,
-								feedResults: interceptedSearchData.feedResults.length
-							};
-						}
-					}).catch(function(error) {
-						console.error('[搜索数据采集] ✗ 保存拦截数据失败:', error);
-					});
-				}
-			};
-			
-			// 从Store收集搜索数据的函数（主要方式：直接访问Pinia Store）
-			var collectSearchData = function() {
-				console.log('[搜索数据采集] 尝试从Store采集数据...');
-				
-				// 优先方法：直接检查 appContext.$pinia.state._value.search（已知的数据路径）
-				var searchStore = null;
-				try {
-					// 快速路径：使用与完整搜索相同的选择器
-					var rootElements = document.querySelectorAll('[data-v-app], [id="app"], [id="__nuxt"], [class*="app"], [class*="root"], body > div');
-					for (var re = 0; re < Math.min(rootElements.length, 4); re++) {
-						var el = rootElements[re];
-						// 检查所有可能的Vue实例属性（与完整搜索保持一致）
-						var vueInstance = el.__vue__ || el.__vueParentComponent || el._vnode || el.__vnode;
-						if (vueInstance) {
-							// 检查是否是VNode（虚拟节点）
-							var isVNode = vueInstance.__v_isVNode || vueInstance.type !== undefined && vueInstance.props !== undefined;
-							var componentInstance = null;
-							
-							if (isVNode) {
-								// 从VNode的component属性获取组件实例
-								if (vueInstance.component) {
-									componentInstance = vueInstance.component;
-								}
-							} else {
-								// 可能是组件实例
-								componentInstance = vueInstance;
-							}
-							
-							// 获取appContext（多种方式尝试）
-							var appContext = null;
-							if (componentInstance) {
-								if (componentInstance.appContext) {
-									appContext = componentInstance.appContext;
-								} else if (componentInstance.setupState && componentInstance.setupState.__appContext) {
-									appContext = componentInstance.setupState.__appContext;
-								} else if (componentInstance.ctx && componentInstance.ctx.appContext) {
-									appContext = componentInstance.ctx.appContext;
-								}
-							}
-							// 如果componentInstance没有appContext，尝试从vueInstance本身获取
-							if (!appContext && vueInstance.appContext) {
-								appContext = vueInstance.appContext;
-							}
-							
-							// 检查appContext中的Pinia
-							if (appContext && appContext.config && appContext.config.globalProperties && appContext.config.globalProperties.$pinia) {
-								var pinia = appContext.config.globalProperties.$pinia;
-								if (pinia.state && pinia.state._value && pinia.state._value.search) {
-									console.log('[搜索数据采集] ✓ 快速路径找到 $pinia.state._value.search');
-									searchStore = pinia.state._value.search;
-									break;
-								}
-							}
-						}
-					}
-				} catch (e) {
-					console.warn('[搜索数据采集] 快速路径检查失败:', e.message);
-				}
-				
-				// 如果快速路径找到了，直接提取数据，跳过所有其他检查
-				if (searchStore) {
-					console.log('[搜索数据采集] ✓ 使用快速路径找到搜索Store，跳过其他检查');
-					// 直接跳转到数据提取部分，不执行后续的完整搜索
-				} else {
-					// 如果快速路径没找到，使用完整搜索（保留作为备用）
-					console.log('[搜索数据采集] 快速路径未找到，使用完整搜索...');
-					
-					// 方法1: 尝试从全局 store 中获取搜索数据
-				var findSearchStore = function(obj, depth, path) {
-					if (depth > 5 || !obj || typeof obj !== 'object' || obj === window) return null;
-					if (!path) path = '';
-					
-					// 检查是否包含搜索结果的典型字段
-					var hasFeedResults = Array.isArray(obj.feedResults);
-					var hasProfileResults = Array.isArray(obj.profileResults);
-					var hasLiveResults = Array.isArray(obj.liveResults);
-					var hasAccountResults = Array.isArray(obj.accountResults);
-					var hasSearchResults = Array.isArray(obj.searchResults);
-					var hasFeeds = Array.isArray(obj.feeds);
-					var hasSearchFields = typeof obj.lastContent !== 'undefined' || 
-					                      typeof obj.isSearchingMoreFeeds !== 'undefined' || 
-					                      typeof obj.noMoreFeeds !== 'undefined' ||
-					                      typeof obj.searchKeyword !== 'undefined' ||
-					                      typeof obj.query !== 'undefined';
-					
-					// 特殊检查：如果对象有 search 属性，检查 search 对象内部
-					if (obj.search && typeof obj.search === 'object') {
-						var searchObj = obj.search;
-						if (Array.isArray(searchObj.feedResults) || Array.isArray(searchObj.profileResults) || 
-						    Array.isArray(searchObj.results) || Array.isArray(searchObj.feeds) ||
-						    Array.isArray(searchObj.liveResults) || Array.isArray(searchObj.accountResults)) {
-							console.log('[搜索数据采集] 在路径', path + '.search', '发现搜索数据');
-							return searchObj; // 返回 search 对象
-						}
-					}
-					
-					// 调试：记录找到的数组字段
-					if (hasFeedResults || hasProfileResults || hasLiveResults || hasAccountResults || hasSearchResults || hasFeeds) {
-						var foundFields = [];
-						if (hasFeedResults) foundFields.push('feedResults(' + obj.feedResults.length + ')');
-						if (hasProfileResults) foundFields.push('profileResults(' + obj.profileResults.length + ')');
-						if (hasLiveResults) foundFields.push('liveResults(' + obj.liveResults.length + ')');
-						if (hasAccountResults) foundFields.push('accountResults(' + obj.accountResults.length + ')');
-						if (hasSearchResults) foundFields.push('searchResults(' + obj.searchResults.length + ')');
-						if (hasFeeds) foundFields.push('feeds(' + obj.feeds.length + ')');
-						console.log('[搜索数据采集] 在路径', path, '发现搜索结果字段:', foundFields.join(', '), hasSearchFields ? '(包含搜索字段)' : '(缺少搜索字段)');
-					}
-					
-					// 放宽条件：只要有搜索结果字段就返回（即使没有搜索字段）
-					if (hasFeedResults || hasProfileResults || hasLiveResults || hasAccountResults || hasSearchResults || hasFeeds) {
-						console.log('[搜索数据采集] 找到搜索Store，路径:', path);
-						return obj;
-					}
-					
-					// 递归查找
-					try {
-						var keys = Object.keys(obj);
-						for (var i = 0; i < Math.min(keys.length, 50); i++) {
-							var k = keys[i];
-							if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
-							try {
-								var result = findSearchStore(obj[k], depth + 1, path + '.' + k);
-								if (result) return result;
-							} catch (e) {}
-						}
-					} catch (e) {}
-					return null;
-				};
-				
-					// 跳过全局对象检查（已知不包含搜索数据，直接进入组件实例检查）
-				
-					// 方法2: 尝试从 Vuex/Pinia store 实例获取（静默检查）
-					if (!searchStore && window.__VUE_DEVTOOLS_GLOBAL_HOOK__) {
-						var instances = window.__VUE_DEVTOOLS_GLOBAL_HOOK__.apps || [];
-						for (var i = 0; i < instances.length; i++) {
-							var app = instances[i];
-							if (app && app.config && app.config.globalProperties) {
-								// 优先检查 $pinia
-								if (app.config.globalProperties.$pinia) {
-									var pinia = app.config.globalProperties.$pinia;
-									if (pinia.state && pinia.state._value && pinia.state._value.search) {
-										searchStore = pinia.state._value.search;
-										break;
-									}
-									if (pinia._s) {
-										for (var storeId in pinia._s) {
-											var piniaStore = pinia._s[storeId];
-											if (piniaStore && piniaStore.$state) {
-												searchStore = findSearchStore(piniaStore.$state, 0, 'pinia.' + storeId);
-												if (searchStore) break;
-											}
-										}
-									}
-								}
-								// 尝试 $store
-								if (!searchStore && app.config.globalProperties.$store) {
-									var store = app.config.globalProperties.$store;
-									if (store.state && store.state.search && typeof store.state.search === 'object') {
-										searchStore = findSearchStore(store.state.search, 0, 'store.state.search');
-									}
-									if (!searchStore && store.state) {
-										searchStore = findSearchStore(store.state, 0, 'store.state');
-									}
-								}
-								if (searchStore) break;
-							}
-						}
-					}
-				
-					// 方法3: 尝试从Vue组件实例中查找（静默检查，减少日志）
-					if (!searchStore) {
-					try {
-						// 扩展选择器，查找更多可能的根元素
-						var rootElements = document.querySelectorAll('[data-v-app], [id="app"], [id="__nuxt"], [class*="app"], [class*="root"], body > div');
-						for (var e = 0; e < Math.min(rootElements.length, 4); e++) {
-							var el = rootElements[e];
-							// 检查所有可能的Vue实例属性
-							var vueInstance = el.__vue__ || el.__vueParentComponent || el._vnode || el.__vnode;
-							if (vueInstance) {
-								// 检查是否是VNode（虚拟节点）
-								var isVNode = vueInstance.__v_isVNode || vueInstance.type !== undefined && vueInstance.props !== undefined;
-								var componentInstance = null;
-								
-								if (isVNode) {
-									// 从VNode的component属性获取组件实例
-									if (vueInstance.component) {
-										componentInstance = vueInstance.component;
-									}
-								} else {
-									// 可能是组件实例
-									componentInstance = vueInstance;
-								}
-								
-								// 如果找到了组件实例，检查它（优先检查Pinia）
-								if (componentInstance) {
-									// 尝试多种方式访问store
-									if (componentInstance.$store) {
-										console.log('[搜索数据采集] 找到 $store');
-										var store = componentInstance.$store;
-										// 输出store的结构信息
-										try {
-											var storeKeys = [];
-											for (var sk in store) {
-												storeKeys.push(sk);
-											}
-											console.log('[搜索数据采集] $store键:', storeKeys.slice(0, 20).join(', '));
-										} catch (err) {}
-										
-										// 检查Vuex store的模块（递归检查所有嵌套模块）
-										var checkVuexModules = function(moduleNode, modulePath) {
-											if (!moduleNode || !moduleNode._children) return;
-											var moduleKeys = Object.keys(moduleNode._children);
-											for (var mk = 0; mk < moduleKeys.length; mk++) {
-												var moduleName = moduleKeys[mk];
-												var module = moduleNode._children[moduleName];
-												var currentPath = modulePath ? modulePath + '.' + moduleName : moduleName;
-												if (module && module.state) {
-													console.log('[搜索数据采集] 检查模块', currentPath);
-													// 输出模块state的键（用于调试）
-													try {
-														var stateKeys = Object.keys(module.state);
-														console.log('[搜索数据采集] 模块', currentPath, 'state键:', stateKeys.slice(0, 15).join(', '), '(共', stateKeys.length, '个)');
-													} catch (e) {}
-													searchStore = findSearchStore(module.state, 0, 'component.$store.module.' + currentPath);
-													if (searchStore) return true;
-													// 递归检查嵌套模块
-													if (module._children) {
-														if (checkVuexModules(module, currentPath)) return true;
-													}
-												}
-											}
-											return false;
-										};
-										
-										if (store._modules && store._modules.root) {
-											console.log('[搜索数据采集] 检查Vuex模块...');
-											if (checkVuexModules(store._modules.root, '')) {
-												if (searchStore) break;
-											}
-										}
-										
-										// 检查store.state（特别检查 state.search 模块）
-										if (!searchStore && store.state) {
-											console.log('[搜索数据采集] 检查 $store.state');
-											// 优先检查 state.search（根据旧快照文件的线索）
-											if (store.state.search && typeof store.state.search === 'object') {
-												console.log('[搜索数据采集] 发现 state.search 对象，检查其内容');
-												searchStore = findSearchStore(store.state.search, 0, 'component.$store.state.search');
-											}
-											if (!searchStore) {
-												searchStore = findSearchStore(store.state, 0, 'component.$store.state');
-											}
-										}
-										if (searchStore) break;
-									}
-									if (componentInstance.$pinia) {
-										console.log('[搜索数据采集] 找到 $pinia');
-										var pinia = componentInstance.$pinia;
-										// 输出pinia的结构信息
-										try {
-											var piniaKeys = [];
-											for (var pk in pinia) {
-												piniaKeys.push(pk);
-											}
-											console.log('[搜索数据采集] $pinia键:', piniaKeys.slice(0, 20).join(', '));
-										} catch (err) {}
-										
-										// 优先检查 pinia.state._value.search（根据实际找到的路径）
-										if (pinia.state && pinia.state._value && pinia.state._value.search) {
-											console.log('[搜索数据采集] 发现 $pinia.state._value.search，直接检查');
-											searchStore = findSearchStore(pinia.state._value.search, 0, 'component.$pinia.state._value.search');
-											if (searchStore) break;
-										}
-										
-										// 检查Pinia store
-										if (!searchStore && pinia._s) {
-											console.log('[搜索数据采集] 检查Pinia stores...');
-											var storeIds = Object.keys(pinia._s);
-											console.log('[搜索数据采集] Pinia store IDs:', storeIds.join(', '));
-											for (var storeId in pinia._s) {
-												var piniaStore = pinia._s[storeId];
-												if (piniaStore && piniaStore.$state) {
-													console.log('[搜索数据采集] 检查Pinia store:', storeId);
-													searchStore = findSearchStore(piniaStore.$state, 0, 'component.$pinia.' + storeId);
-													if (searchStore) break;
-												}
-											}
-										}
-										
-										// 如果还没找到，递归查找整个 pinia 对象
-										if (!searchStore) {
-											searchStore = findSearchStore(pinia, 0, 'component.$pinia');
-										}
-										if (searchStore) break;
-									}
-									
-									// 尝试从组件实例本身查找
-									searchStore = findSearchStore(componentInstance, 0, 'component.instance');
-									if (searchStore) break;
-									
-									// 尝试从组件的setupState查找（Vue 3 Composition API）
-									if (componentInstance.setupState) {
-										console.log('[搜索数据采集] 找到 setupState');
-										try {
-											var setupKeys = Object.keys(componentInstance.setupState);
-											console.log('[搜索数据采集] setupState键:', setupKeys.slice(0, 20).join(', '), '(共', setupKeys.length, '个)');
-										} catch (e) {}
-										searchStore = findSearchStore(componentInstance.setupState, 0, 'component.setupState');
-										if (searchStore) break;
-									}
-									
-									// 尝试从ctx查找（Vue 3 Options API）
-									if (componentInstance.ctx) {
-										console.log('[搜索数据采集] 找到 ctx');
-										try {
-											var ctxKeys = Object.keys(componentInstance.ctx);
-											console.log('[搜索数据采集] ctx键:', ctxKeys.slice(0, 20).join(', '), '(共', ctxKeys.length, '个)');
-										} catch (e) {}
-										searchStore = findSearchStore(componentInstance.ctx, 0, 'component.ctx');
-										if (searchStore) break;
-									}
-									
-									// 尝试从exposed查找（Vue 3 expose）
-									if (componentInstance.exposed) {
-										console.log('[搜索数据采集] 找到 exposed');
-										searchStore = findSearchStore(componentInstance.exposed, 0, 'component.exposed');
-										if (searchStore) break;
-									}
-									
-									// 尝试从parent查找（向上遍历组件树）
-									if (componentInstance.parent) {
-										console.log('[搜索数据采集] 找到 parent，尝试向上查找');
-										var parent = componentInstance.parent;
-										for (var p = 0; p < 5 && parent; p++) {
-											if (parent.$store) {
-												searchStore = findSearchStore(parent.$store.state, 0, 'component.parent[' + p + '].$store');
-												if (searchStore) break;
-											}
-											if (parent.$pinia) {
-												searchStore = findSearchStore(parent.$pinia, 0, 'component.parent[' + p + '].$pinia');
-												if (searchStore) break;
-											}
-											parent = parent.parent;
-										}
-										if (searchStore) break;
-									}
-								}
-								
-								// 尝试从appContext查找（Vue 3）- 无论是否是VNode都有appContext
-								if (vueInstance.appContext) {
-									console.log('[搜索数据采集] 找到 appContext');
-									var appContext = vueInstance.appContext;
-									
-									// 输出appContext的结构
-									try {
-										var acKeys = [];
-										for (var ack in appContext) {
-											acKeys.push(ack);
-										}
-										console.log('[搜索数据采集] appContext键:', acKeys.join(', '));
-									} catch (err) {}
-									
-									// 检查config.globalProperties
-									if (appContext.config && appContext.config.globalProperties) {
-										console.log('[搜索数据采集] 检查 appContext.config.globalProperties');
-										if (appContext.config.globalProperties.$store) {
-											console.log('[搜索数据采集] 找到 $store (appContext)');
-											var store = appContext.config.globalProperties.$store;
-											
-											// 检查Vuex store的模块（递归检查所有嵌套模块）
-											var checkVuexModules = function(moduleNode, modulePath) {
-												if (!moduleNode || !moduleNode._children) return;
-												var moduleKeys = Object.keys(moduleNode._children);
-												for (var mk = 0; mk < moduleKeys.length; mk++) {
-													var moduleName = moduleKeys[mk];
-													var module = moduleNode._children[moduleName];
-													var currentPath = modulePath ? modulePath + '.' + moduleName : moduleName;
-													if (module && module.state) {
-														console.log('[搜索数据采集] 检查模块', currentPath);
-														// 输出模块state的键（用于调试）
-														try {
-															var stateKeys = Object.keys(module.state);
-															console.log('[搜索数据采集] 模块', currentPath, 'state键:', stateKeys.slice(0, 15).join(', '), '(共', stateKeys.length, '个)');
-														} catch (e) {}
-														searchStore = findSearchStore(module.state, 0, 'appContext.$store.module.' + currentPath);
-														if (searchStore) return true;
-														// 递归检查嵌套模块
-														if (module._children) {
-															if (checkVuexModules(module, currentPath)) return true;
-														}
-													}
-												}
-												return false;
-											};
-											
-											if (store._modules && store._modules.root) {
-												console.log('[搜索数据采集] 检查Vuex模块 (appContext)...');
-												if (checkVuexModules(store._modules.root, '')) {
-													if (searchStore) break;
-												}
-											}
-											
-											// 检查store.state（输出state的键用于调试，特别检查 state.search）
-											if (!searchStore && store.state) {
-												console.log('[搜索数据采集] 检查 $store.state (appContext)');
-												try {
-													var stateKeys = Object.keys(store.state);
-													console.log('[搜索数据采集] $store.state键:', stateKeys.slice(0, 20).join(', '), '(共', stateKeys.length, '个)');
-													// 优先检查 state.search（根据旧快照文件的线索）
-													if (store.state.search && typeof store.state.search === 'object') {
-														console.log('[搜索数据采集] 发现 state.search 对象 (appContext)，检查其内容');
-														searchStore = findSearchStore(store.state.search, 0, 'appContext.$store.state.search');
-													}
-												} catch (e) {}
-												if (!searchStore) {
-													searchStore = findSearchStore(store.state, 0, 'appContext.$store.state');
-												}
-											}
-											if (searchStore) break;
-										}
-										// 优先检查 $pinia（已知路径）
-										if (appContext.config.globalProperties.$pinia) {
-											var pinia = appContext.config.globalProperties.$pinia;
-											if (pinia.state && pinia.state._value && pinia.state._value.search) {
-												searchStore = pinia.state._value.search;
-												break;
-											}
-											if (pinia._s) {
-												for (var storeId in pinia._s) {
-													var piniaStore = pinia._s[storeId];
-													if (piniaStore && piniaStore.$state) {
-														searchStore = findSearchStore(piniaStore.$state, 0, 'appContext.pinia.' + storeId);
-														if (searchStore) break;
-													}
-												}
-											}
-											if (searchStore) break;
-										}
-									}
-									
-									// 检查provides（Vue 3依赖注入）
-									if (appContext.provides) {
-										console.log('[搜索数据采集] 检查 appContext.provides');
-										try {
-											var providesKeys = Object.keys(appContext.provides);
-											console.log('[搜索数据采集] provides键:', providesKeys.slice(0, 20).join(', '), '(共', providesKeys.length, '个)');
-											// 明确检查 provides.store（如果有的话）
-											if (appContext.provides.store) {
-												console.log('[搜索数据采集] 找到 appContext.provides.store');
-												var providesStore = appContext.provides.store;
-												// 检查是否是Vuex store
-												if (providesStore.state) {
-													console.log('[搜索数据采集] provides.store 是Vuex store，检查state');
-													// 检查Vuex模块
-													if (providesStore._modules && providesStore._modules.root) {
-														var checkVuexModules = function(moduleNode, modulePath) {
-															if (!moduleNode || !moduleNode._children) return;
-															var moduleKeys = Object.keys(moduleNode._children);
-															for (var mk = 0; mk < moduleKeys.length; mk++) {
-																var moduleName = moduleKeys[mk];
-																var module = moduleNode._children[moduleName];
-																var currentPath = modulePath ? modulePath + '.' + moduleName : moduleName;
-																if (module && module.state) {
-																	console.log('[搜索数据采集] 检查provides.store模块', currentPath);
-																	searchStore = findSearchStore(module.state, 0, 'provides.store.module.' + currentPath);
-																	if (searchStore) return true;
-																	if (module._children) {
-																		if (checkVuexModules(module, currentPath)) return true;
-																	}
-																}
-															}
-															return false;
-														};
-														if (checkVuexModules(providesStore._modules.root, '')) {
-															if (searchStore) break;
-														}
-													}
-													// 检查state本身（特别检查 state.search）
-													if (!searchStore && providesStore.state) {
-														// 优先检查 state.search（根据旧快照文件的线索）
-														if (providesStore.state.search && typeof providesStore.state.search === 'object') {
-															console.log('[搜索数据采集] 发现 state.search 对象 (provides.store)，检查其内容');
-															searchStore = findSearchStore(providesStore.state.search, 0, 'provides.store.state.search');
-														}
-														if (!searchStore) {
-															searchStore = findSearchStore(providesStore.state, 0, 'provides.store.state');
-														}
-														if (searchStore) break;
-													}
-												} else {
-													// 可能是其他类型的store，直接查找
-													searchStore = findSearchStore(providesStore, 0, 'provides.store');
-													if (searchStore) break;
-												}
-											}
-										} catch (e) {
-											console.log('[搜索数据采集] 检查provides时出错:', e.message);
-										}
-										// 如果还没找到，递归查找整个provides对象
-										if (!searchStore) {
-											searchStore = findSearchStore(appContext.provides, 0, 'component.appContext.provides');
-											if (searchStore) break;
-										}
-									}
-									
-									// 检查appContext本身
-									searchStore = findSearchStore(appContext, 0, 'component.appContext');
-									if (searchStore) break;
-									
-									// 检查app（Vue应用实例）
-									if (appContext.app) {
-										console.log('[搜索数据采集] 检查 appContext.app');
-										var app = appContext.app;
-										if (app.config && app.config.globalProperties) {
-											if (app.config.globalProperties.$store) {
-												searchStore = findSearchStore(app.config.globalProperties.$store.state, 0, 'component.appContext.app.$store');
-												if (searchStore) break;
-											}
-											if (app.config.globalProperties.$pinia) {
-												var pinia = app.config.globalProperties.$pinia;
-												if (pinia._s) {
-													for (var storeId in pinia._s) {
-														var piniaStore = pinia._s[storeId];
-														if (piniaStore && piniaStore.$state) {
-															searchStore = findSearchStore(piniaStore.$state, 0, 'component.appContext.app.pinia.' + storeId);
-															if (searchStore) break;
-														}
-													}
-												}
-												if (searchStore) break;
-											}
-										}
-									}
-								}
-								
-								// 如果还没找到，尝试从VNode本身查找（可能数据在props或其他地方）
-								if (!searchStore && isVNode) {
-									console.log('[搜索数据采集] 尝试从VNode本身查找');
-									searchStore = findSearchStore(vueInstance, 0, 'vnode');
-									if (searchStore) break;
-									if (vueInstance.props) {
-										searchStore = findSearchStore(vueInstance.props, 0, 'vnode.props');
-										if (searchStore) break;
-									}
-								}
-							}
-						}
-					} catch (err) {
-						console.warn('[搜索数据采集] 从组件实例查找失败:', err);
-					}
-				}
-				
-					// 方法4: 尝试从window对象中深度查找（静默检查，最后手段）
-					if (!searchStore) {
-						var windowKeys = ['__APP__', '__VUE__', '__NUXT__', '__INITIAL_STATE__', 'app', 'store', 'vue', 'Vue', 'vueApp', 'vuex', 'pinia'];
-						for (var wk = 0; wk < windowKeys.length; wk++) {
-							var key = windowKeys[wk];
-							if (window[key]) {
-								searchStore = findSearchStore(window[key], 0, 'window.' + key);
-								if (searchStore) break;
-							}
-						}
-					}
-				}
-				
-				// 从 store 中提取数据并合并到拦截数据中
-				if (searchStore) {
-					console.log('[搜索数据采集] 找到搜索Store，开始提取数据...');
-					
-					// 收集账号信息 (profileResults/accountResults)
-					if (Array.isArray(searchStore.profileResults)) {
-						console.log('[搜索数据采集] 从Store找到profileResults，数量:', searchStore.profileResults.length);
-						searchStore.profileResults.forEach(function(profile) {
-							if (profile && profile.id && !interceptedSearchData.profiles.find(function(p) { return p.id === profile.id; })) {
-								interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(profile)));
-							}
-						});
-					}
-					if (Array.isArray(searchStore.accountResults)) {
-						console.log('[搜索数据采集] 从Store找到accountResults，数量:', searchStore.accountResults.length);
-						var addedCount = 0;
-						var skippedCount = 0;
-						searchStore.accountResults.forEach(function(account, index) {
-							if (!account || typeof account !== 'object') {
-								skippedCount++;
-								return;
-							}
-							// 检查多种可能的ID字段（包括contact对象中的ID）
-							var accountId = account.id || account.accountId || account.username || account.nickname || account.finderUsername;
-							// 如果account对象有contact属性，检查contact中的ID字段
-							if (!accountId && account.contact && typeof account.contact === 'object') {
-								accountId = account.contact.id || account.contact.username || account.contact.finderUsername || 
-								           account.contact.accountId || account.contact.nickname;
-							}
-							
-							if (!accountId) {
-								// 如果前3个都没有ID，输出调试信息
-								if (index < 3) {
-									var accountKeys = Object.keys(account);
-									console.log('[搜索数据采集] accountResults[' + index + '] 没有找到标准ID字段，键:', accountKeys.slice(0, 15).join(', '));
-									if (account.contact) {
-										var contactKeys = Object.keys(account.contact);
-										console.log('[搜索数据采集] accountResults[' + index + '].contact 键:', contactKeys.slice(0, 10).join(', '));
-									}
-								}
-								// 使用其他唯一标识符进行去重（如contact.username的组合）
-								var uniqueKey = null;
-								if (account.contact && account.contact.username) {
-									uniqueKey = 'contact_username_' + account.contact.username;
-								} else if (account.highlightNickname) {
-									uniqueKey = 'nickname_' + account.highlightNickname;
-								} else if (account.reqIndex !== undefined) {
-									uniqueKey = 'reqIndex_' + account.reqIndex;
-								}
-								
-								if (uniqueKey) {
-									// 检查是否已存在（使用唯一键）
-									var exists = interceptedSearchData.profiles.find(function(p) {
-										if (p.contact && p.contact.username && account.contact && account.contact.username) {
-											return p.contact.username === account.contact.username;
-										}
-										if (p.highlightNickname && account.highlightNickname) {
-											return p.highlightNickname === account.highlightNickname;
-										}
-										if (p.reqIndex !== undefined && account.reqIndex !== undefined) {
-											return p.reqIndex === account.reqIndex;
-										}
-										return false;
-									});
-									if (!exists) {
-										interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(account)));
-										addedCount++;
-									} else {
-										skippedCount++;
-									}
-								} else {
-									// 如果连唯一键都没有，也添加（但标记为可能重复）
-									interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(account)));
-									addedCount++;
-								}
-								return;
-							}
-							// 检查是否已存在（使用多种ID字段匹配）
-							var exists = interceptedSearchData.profiles.find(function(p) {
-								var pId = p.id || p.accountId || p.username || p.finderUsername;
-								if (!pId && p.contact && typeof p.contact === 'object') {
-									pId = p.contact.id || p.contact.username || p.contact.finderUsername || 
-									      p.contact.accountId || p.contact.nickname;
-								}
-								return pId === accountId;
-							});
-							if (!exists) {
-								interceptedSearchData.profiles.push(JSON.parse(JSON.stringify(account)));
-								addedCount++;
-							} else {
-								skippedCount++;
-							}
-						});
-						console.log('[搜索数据采集] accountResults处理完成 - 添加:', addedCount, ', 跳过:', skippedCount, ', profiles总数:', interceptedSearchData.profiles.length);
-					}
-					
-					// 收集直播数据 (liveResults)
-					if (Array.isArray(searchStore.liveResults)) {
-						console.log('[搜索数据采集] 从Store找到liveResults，数量:', searchStore.liveResults.length);
-						var liveAddedCount = 0;
-						searchStore.liveResults.forEach(function(live) {
-							if (live && live.id && !interceptedSearchData.liveResults.find(function(l) { return l.id === live.id; })) {
-								interceptedSearchData.liveResults.push(JSON.parse(JSON.stringify(live)));
-								liveAddedCount++;
-							}
-						});
-						console.log('[搜索数据采集] liveResults处理完成 - 添加:', liveAddedCount, ', liveResults总数:', interceptedSearchData.liveResults.length);
-					}
-					
-					// 收集动态数据 (feedResults)
-					if (Array.isArray(searchStore.feedResults)) {
-						console.log('[搜索数据采集] 从Store找到feedResults，数量:', searchStore.feedResults.length);
-						var feedAddedCount = 0;
-						searchStore.feedResults.forEach(function(feed) {
-							if (feed && feed.id && !interceptedSearchData.feedResults.find(function(f) { return f.id === feed.id; })) {
-								interceptedSearchData.feedResults.push(JSON.parse(JSON.stringify(feed)));
-								feedAddedCount++;
-							}
-						});
-						console.log('[搜索数据采集] feedResults处理完成 - 添加:', feedAddedCount, ', feedResults总数:', interceptedSearchData.feedResults.length);
-					}
-					
-					// 如果从Store获取到数据，保存一次
-					console.log('[搜索数据采集] Store数据提取完成 - profiles:', interceptedSearchData.profiles.length, 
-					            ', liveResults:', interceptedSearchData.liveResults.length, 
-					            ', feedResults:', interceptedSearchData.feedResults.length);
-					
-					// 将搜索数据暴露到全局对象，供前端导出使用
-					if (!window.__wx_channels_search_data) {
-						window.__wx_channels_search_data = {};
-					}
-					window.__wx_channels_search_data.profiles = interceptedSearchData.profiles;
-					window.__wx_channels_search_data.liveResults = interceptedSearchData.liveResults;
-					window.__wx_channels_search_data.feedResults = interceptedSearchData.feedResults;
-					window.__wx_channels_search_data.keyword = keyword;
-					
-					// 只在数据有变化时才保存（在checkAndUpdateData中会处理保存）
-					// 这里不保存，避免重复保存
-					
-					// 将 feedResults 转换为批量下载面板需要的格式，并添加到批量下载面板
-					if (interceptedSearchData.feedResults.length > 0) {
-						try {
-							// 确保批量下载面板已初始化
-							if (typeof window.__wx_channels_profile_collector === 'undefined') {
-								console.log('[搜索数据采集] 批量下载面板未初始化，等待初始化...');
-								// 延迟重试，等待批量下载面板初始化
-								var retryCount = 0;
-								var maxRetries = 10;
-								var retryInterval = setInterval(function() {
-									retryCount++;
-									if (typeof window.__wx_channels_profile_collector !== 'undefined') {
-										clearInterval(retryInterval);
-										console.log('[搜索数据采集] 批量下载面板已初始化，开始添加视频');
-										// 重新处理feedResults
-										var videoCount = 0;
-										interceptedSearchData.feedResults.forEach(function(feed) {
-											if (feed && feed.id && feed.objectDesc && feed.objectDesc.media && feed.objectDesc.media.length > 0) {
-												var media = feed.objectDesc.media[0];
-												if (media.mediaType === 4 && media.spec && media.spec.length > 0) {
-													var videoUrl = '';
-													if (media.url) {
-														videoUrl = media.url + (media.urlToken || '');
-													} else if (media.fullUrl) {
-														videoUrl = media.fullUrl;
-													}
-													
-													var videoData = {
-														type: 'media',
-														id: feed.id,
-														nonce_id: feed.objectNonceId || feed.id,
-														title: cleanHtmlTags(feed.objectDesc.description) || '未命名视频',
-														coverUrl: media.coverUrl || media.fullCoverUrl || '',
-														thumbUrl: media.thumbUrl || media.fullThumbUrl || '',
-														fullThumbUrl: media.fullThumbUrl || '',
-														url: videoUrl,
-														size: parseInt(media.fileSize || media.cdnFileSize || '0'),
-														key: media.decodeKey || '',
-														duration: media.spec[0].durationMs || 0,
-														spec: media.spec.map(function(s) {
-															return {
-																width: s.width || 0,
-																height: s.height || 0,
-																bitrate: s.videoBitrate || s.bitRate || 0,
-																fileFormat: s.fileFormat || '',
-																durationMs: s.durationMs || 0
-															};
-														}),
-														fileFormat: media.spec.map(function(o) { return o.fileFormat; }),
-														nickname: feed.contact ? feed.contact.nickname : '',
-														username: feed.contact ? feed.contact.username : '',
-														createtime: feed.createtime || 0,
-														contact: feed.contact || {},
-														readCount: feed.readCount || 0,
-														likeCount: feed.likeCount || 0,
-														commentCount: feed.commentCount || 0,
-														favCount: feed.favCount || 0,
-														forwardCount: feed.forwardCount || 0,
-														ipRegionInfo: feed.ipRegionInfo || {},
-														mediaType: media.mediaType,
-														timestamp: Date.now()
-													};
-													
-													window.__wx_channels_profile_collector.addVideoFromAPI(videoData);
-													videoCount++;
-												}
-											}
-										});
-										if (videoCount > 0) {
-											console.log('[搜索数据采集] ✓ 延迟添加：已将', videoCount, '个视频添加到批量下载面板');
-										}
-									} else if (retryCount >= maxRetries) {
-										clearInterval(retryInterval);
-										console.warn('[搜索数据采集] 批量下载面板初始化超时，无法添加视频');
-									}
-								}, 500);
-							} else {
-								var videoCount = 0;
-								interceptedSearchData.feedResults.forEach(function(feed) {
-									if (feed && feed.id && feed.objectDesc && feed.objectDesc.media && feed.objectDesc.media.length > 0) {
-										var media = feed.objectDesc.media[0];
-										// 只处理视频类型（mediaType === 4）
-										if (media.mediaType === 4 && media.spec && media.spec.length > 0) {
-											// 转换为批量下载面板需要的格式
-											// 拼接视频URL（url + urlToken）
-											var videoUrl = '';
-											if (media.url) {
-												videoUrl = media.url + (media.urlToken || '');
-											} else if (media.fullUrl) {
-												videoUrl = media.fullUrl;
-											}
-											
-											var videoData = {
-												type: 'media',
-												id: feed.id,
-												nonce_id: feed.objectNonceId || feed.id,
-												title: cleanHtmlTags(feed.objectDesc.description) || '未命名视频',
-												coverUrl: media.coverUrl || media.fullCoverUrl || '',
-												thumbUrl: media.thumbUrl || media.fullThumbUrl || '',
-												fullThumbUrl: media.fullThumbUrl || '',
-												url: videoUrl,
-												size: parseInt(media.fileSize || media.cdnFileSize || '0'),
-												key: media.decodeKey || '',
-												duration: media.spec[0].durationMs || 0,
-												spec: media.spec.map(function(s) {
-													return {
-														width: s.width || 0,
-														height: s.height || 0,
-														bitrate: s.videoBitrate || s.bitRate || 0,
-														fileFormat: s.fileFormat || '',
-														durationMs: s.durationMs || 0
-													};
-												}),
-												fileFormat: media.spec.map(function(o) { return o.fileFormat; }),
-												nickname: feed.contact ? feed.contact.nickname : '',
-												username: feed.contact ? feed.contact.username : '',
-												createtime: feed.createtime || 0,
-												contact: feed.contact || {},
-												readCount: feed.readCount || 0,
-												likeCount: feed.likeCount || 0,
-												commentCount: feed.commentCount || 0,
-												favCount: feed.favCount || 0,
-												forwardCount: feed.forwardCount || 0,
-												ipRegionInfo: feed.ipRegionInfo || {},
-												mediaType: media.mediaType,
-												timestamp: Date.now()
-											};
-											
-											// 添加到批量下载面板
-											window.__wx_channels_profile_collector.addVideoFromAPI(videoData);
-											videoCount++;
-										}
-									}
-								});
-								if (videoCount > 0) {
-									console.log('[搜索数据采集] ✓ 已将', videoCount, '个视频添加到批量下载面板');
-								}
-							}
-						} catch (e) {
-							console.error('[搜索数据采集] 转换视频数据失败:', e);
-						}
-					}
-					
-					// 检查是否有任何数据
-					if (interceptedSearchData.profiles.length === 0 && 
-					    interceptedSearchData.liveResults.length === 0 && 
-					    interceptedSearchData.feedResults.length === 0) {
-						console.warn('[搜索数据采集] 警告：从Store提取数据后，所有数组都为空！');
-					}
-				} else {
-					console.log('[搜索数据采集] 未找到搜索Store，可能Store尚未加载或结构不同');
-				}
-			};
-			
-			// 注意：DOM提取已移除，因为Pinia Store已经能稳定获取完整数据
-			
-			// 页面加载后尝试从Store收集数据（智能重试：如果成功找到数据就停止重试）
-			var retryCount = 0;
-			var maxRetries = 3; // 减少到3次重试
-			var retryDelays = [3000, 5000, 8000]; // 减少延迟次数
-			var dataFound = false; // 标记是否已找到数据
-			
-			var tryCollectSearchData = function() {
-				if (retryCount < maxRetries && !dataFound) {
-					console.log('[搜索数据采集] 第', (retryCount + 1), '次尝试从Store采集数据...');
-					
-					// 检查是否成功找到数据
-					var beforeProfiles = interceptedSearchData.profiles.length;
-					var beforeLive = interceptedSearchData.liveResults.length;
-					var beforeFeed = interceptedSearchData.feedResults.length;
-					
-					collectSearchData();
-					
-					// 检查数据是否有增加
-					var afterProfiles = interceptedSearchData.profiles.length;
-					var afterLive = interceptedSearchData.liveResults.length;
-					var afterFeed = interceptedSearchData.feedResults.length;
-					
-					// 如果找到了数据（账号、直播或动态），标记为成功
-					if (afterProfiles > 0 || afterLive > 0 || afterFeed > 0) {
-						dataFound = true;
-						console.log('[搜索数据采集] ✓ 已成功采集到数据，停止重试');
-						return; // 停止重试
-					}
-					
-					retryCount++;
-					if (retryCount < maxRetries && !dataFound) {
-						setTimeout(tryCollectSearchData, retryDelays[retryCount - 1] || 3000);
-					}
-				}
-			};
-			
-			if (document.readyState === 'complete') {
-				setTimeout(tryCollectSearchData, retryDelays[0]);
-			} else {
-				window.addEventListener('load', function() {
-					setTimeout(tryCollectSearchData, retryDelays[0]);
-				});
-			}
-			
-			// 监听 URL 变化（搜索页是 SPA），重新初始化
-			var lastUrl = window.location.href;
-			setInterval(function() {
-				if (window.location.href !== lastUrl) {
-					lastUrl = window.location.href;
-					if (window.location.pathname.includes('/pages/s')) {
-						// URL变化时清空已拦截的数据，重新开始
-						interceptedSearchData.profiles = [];
-						interceptedSearchData.liveResults = [];
-						interceptedSearchData.feedResults = [];
-						setTimeout(collectSearchData, 2000);
-					}
-				}
-			}, 1000);
-			
-			// 监听页面变化并自动更新数据
-			var updateTimer = null;
-			var lastUpdateTime = 0;
-			var lastDataCount = {
-				profiles: 0,
-				liveResults: 0,
-				feedResults: 0
-			};
-			
-			var checkAndUpdateData = function(source) {
-				// 记录当前数据数量
-				var currentDataCount = {
-					profiles: interceptedSearchData.profiles.length,
-					liveResults: interceptedSearchData.liveResults.length,
-					feedResults: interceptedSearchData.feedResults.length
-				};
-				
-				// 重新采集数据
-				collectSearchData();
-				
-				// 检查是否有新数据
-				var newProfiles = interceptedSearchData.profiles.length - currentDataCount.profiles;
-				var newLives = interceptedSearchData.liveResults.length - currentDataCount.liveResults;
-				var newFeeds = interceptedSearchData.feedResults.length - currentDataCount.feedResults;
-				
-				if (newProfiles > 0 || newLives > 0 || newFeeds > 0) {
-					console.log('[搜索数据采集] [' + (source || '检测') + '] 检测到新数据 - 账户:', newProfiles, ', 直播:', newLives, ', 动态:', newFeeds);
-					
-					// 更新全局搜索数据
-					if (!window.__wx_channels_search_data) {
-						window.__wx_channels_search_data = {};
-					}
-					window.__wx_channels_search_data.profiles = interceptedSearchData.profiles;
-					window.__wx_channels_search_data.liveResults = interceptedSearchData.liveResults;
-					window.__wx_channels_search_data.feedResults = interceptedSearchData.feedResults;
-					window.__wx_channels_search_data.keyword = keyword;
-					
-					// 如果有新的feedResults，添加到批量下载面板
-					if (newFeeds > 0 && typeof window.__wx_channels_profile_collector !== 'undefined') {
-						try {
-							var videoCount = 0;
-							// 只处理新增的feedResults
-							var processedFeeds = interceptedSearchData.feedResults.slice(currentDataCount.feedResults);
-							processedFeeds.forEach(function(feed) {
-								if (feed && feed.id && feed.objectDesc && feed.objectDesc.media && feed.objectDesc.media.length > 0) {
-									var media = feed.objectDesc.media[0];
-									if (media.mediaType === 4 && media.spec && media.spec.length > 0) {
-										var videoUrl = '';
-										if (media.url) {
-											videoUrl = media.url + (media.urlToken || '');
-										} else if (media.fullUrl) {
-											videoUrl = media.fullUrl;
-										}
-										
-										var videoData = {
-											type: 'media',
-											id: feed.id,
-											nonce_id: feed.objectNonceId || feed.id,
-											title: cleanHtmlTags(feed.objectDesc.description) || '未命名视频',
-											coverUrl: media.coverUrl || media.fullCoverUrl || '',
-											thumbUrl: media.thumbUrl || media.fullThumbUrl || '',
-											fullThumbUrl: media.fullThumbUrl || '',
-											url: videoUrl,
-											size: parseInt(media.fileSize || media.cdnFileSize || '0'),
-											key: media.decodeKey || '',
-											duration: media.spec[0].durationMs || 0,
-											spec: media.spec.map(function(s) {
-												return {
-													width: s.width || 0,
-													height: s.height || 0,
-													bitrate: s.videoBitrate || s.bitRate || 0,
-													fileFormat: s.fileFormat || '',
-													durationMs: s.durationMs || 0
-												};
-											}),
-											fileFormat: media.spec.map(function(o) { return o.fileFormat; }),
-											nickname: feed.contact ? feed.contact.nickname : '',
-											username: feed.contact ? feed.contact.username : '',
-											createtime: feed.createtime || 0,
-											contact: feed.contact || {},
-											readCount: feed.readCount || 0,
-											likeCount: feed.likeCount || 0,
-											commentCount: feed.commentCount || 0,
-											favCount: feed.favCount || 0,
-											forwardCount: feed.forwardCount || 0,
-											ipRegionInfo: feed.ipRegionInfo || {},
-											mediaType: media.mediaType,
-											timestamp: Date.now()
-										};
-										
-										window.__wx_channels_profile_collector.addVideoFromAPI(videoData);
-										videoCount++;
-									}
-								}
-							});
-							if (videoCount > 0) {
-								console.log('[搜索数据采集] ✓ [' + (source || '更新') + '] 已将', videoCount, '个新视频添加到批量下载面板');
-							}
-						} catch (e) {
-							console.error('[搜索数据采集] 更新视频数据失败:', e);
-						}
-					}
-					
-					// 保存更新的数据
-					saveInterceptedSearchData();
-					
-					// 更新最后的数据计数
-					lastDataCount = {
-						profiles: interceptedSearchData.profiles.length,
-						liveResults: interceptedSearchData.liveResults.length,
-						feedResults: interceptedSearchData.feedResults.length
-					};
-				}
-			};
-			
-			// 防抖函数
-			var debounceCheck = function(source) {
-				clearTimeout(updateTimer);
-				updateTimer = setTimeout(function() {
-					var now = Date.now();
-					// 限制更新频率：至少间隔1.5秒
-					if (now - lastUpdateTime > 1500) {
-						lastUpdateTime = now;
-						checkAndUpdateData(source);
-					}
-				}, 300);
-			};
-			
-			// 1. 监听DOM变化（MutationObserver）
-			try {
-				var observer = new MutationObserver(function(mutations) {
-					var shouldCheck = false;
-					mutations.forEach(function(mutation) {
-						if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-							// 检测到新节点添加，可能是新内容加载
-							shouldCheck = true;
-						}
-						if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-							shouldCheck = true;
-						}
-					});
-					if (shouldCheck) {
-						debounceCheck('DOM变化');
-					}
-				});
-				
-				// 观察整个文档的变化
-				observer.observe(document.body, {
-					childList: true,
-					subtree: true
-				});
-				console.log('[搜索数据采集] ✓ 已启动DOM变化监听');
-			} catch (e) {
-				console.warn('[搜索数据采集] MutationObserver初始化失败:', e);
-			}
-			
-			// 2. 监听滚动事件（作为补充）
-			window.addEventListener('scroll', function() {
-				var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-				var windowHeight = window.innerHeight;
-				var documentHeight = document.documentElement.scrollHeight;
-				
-				// 当滚动到底部附近时触发检查
-				if (documentHeight - scrollTop - windowHeight < 200) {
-					debounceCheck('滚动到底部');
-				}
-			}, { passive: true });
-			
-			// 3. 定期检查Store数据变化（每3秒）
-			setInterval(function() {
-				debounceCheck('定期检查');
-			}, 3000);
-			
-			console.log('[搜索数据采集] ✓ 已启动页面变化监听（DOM变化、滚动、定期检查）');
-		} catch (error) {
-			console.error('搜索数据采集初始化失败:', error);
-		}
-	};
-	
-	// 初始化搜索数据采集
-	if (document.readyState === 'complete') {
-		window.__wx_channels_collect_search_data();
-	} else {
-		window.addEventListener('load', function() {
-			window.__wx_channels_collect_search_data();
-		});
-	}
 	</script>`
 }
 
@@ -2543,33 +1166,6 @@ if (window.__wx_channels_video_cache_monitor) {
 if(f.cmd===re.MAIN_THREAD_CMD.AUTO_CUT`
 	content = regexp2.ReplaceAllString(content, replaceStr2)
 
-	// 尝试在index.publish中查找并拦截视频切换函数
-	// 策略1：拦截 goToNextFlowFeed (下一个视频)
-	callNextRegex := regexp.MustCompile(`(\w)\.goToNextFlowFeed\(\{goBackWhenEnd:[^,]+,eleInfo:\{[^}]+\}[^)]*\}\)`)
-	// 策略2：拦截 goToPrevFlowFeed (上一个视频)
-	callPrevRegex := regexp.MustCompile(`(\w)\.goToPrevFlowFeed\(\{eleInfo:\{[^}]+\}\}\)`)
-
-	// 数据采集代码（通用，包含互动数据）- 精简日志版本
-	captureCode := `setTimeout(function(){try{var __tab=Ue.value;if(__tab&&__tab.currentFeed){var __feed=__tab.currentFeed;if(__feed.objectDesc){var __media=__feed.objectDesc.media[0];var __duration=0;if(__media&&__media.spec&&__media.spec[0]&&__media.spec[0].durationMs){__duration=__media.spec[0].durationMs;}var __profile={type:"media",media:__media,duration:__duration,spec:__media.spec.map(function(s){return{width:s.width||s.videoWidth,height:s.height||s.videoHeight,bitrate:s.bitrate,fileFormat:s.fileFormat}}),title:__feed.objectDesc.description,coverUrl:__media.thumbUrl,url:__media.url+__media.urlToken,size:__media.fileSize,key:__media.decodeKey,id:__feed.id,nonce_id:__feed.objectNonceId,nickname:(__feed.contact&&__feed.contact.nickname)?__feed.contact.nickname:"",createtime:__feed.createtime,fileFormat:__media.spec.map(function(o){return o.fileFormat}),contact:__feed.contact,readCount:__feed.readCount,likeCount:__feed.likeCount,commentCount:__feed.commentCount,favCount:__feed.favCount,forwardCount:__feed.forwardCount,ipRegionInfo:__feed.ipRegionInfo};fetch("/__wx_channels_api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(__profile)});window.__wx_channels_store__=window.__wx_channels_store__||{profile:null,buffers:[],keys:{}};window.__wx_channels_store__.profile=__profile;fetch("/__wx_channels_api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({msg:"📹 [Home] "+(__profile.nickname||"未知作者")+" - "+(__profile.title||"").substring(0,30)+"..."})}).catch(function(){});}}}catch(__e){console.error("[Home] 采集失败:",__e)}},500)`
-
-	// 替换 goToNextFlowFeed
-	if callNextRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] 在index.publish中成功拦截 goToNextFlowFeed 函数")
-		replaceNext := `$1.goToNextFlowFeed({goBackWhenEnd:f.goBackWhenEnd,eleInfo:{type:f.source,tagId:Ct.value},ignoreCoolDown:f.ignoreCoolDown});` + captureCode
-		content = callNextRegex.ReplaceAllString(content, replaceNext)
-	} else {
-		utils.LogInfo("[Home数据采集] 在index.publish中未找到 goToNextFlowFeed 函数")
-	}
-
-	// 替换 goToPrevFlowFeed
-	if callPrevRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] 在index.publish中成功拦截 goToPrevFlowFeed 函数")
-		replacePrev := `$1.goToPrevFlowFeed({eleInfo:{type:f.source,tagId:Ct.value}});` + captureCode
-		content = callPrevRegex.ReplaceAllString(content, replacePrev)
-	} else {
-		utils.LogInfo("[Home数据采集] 在index.publish中未找到 goToPrevFlowFeed 函数")
-	}
-
 	return content, true
 }
 
@@ -2579,531 +1175,148 @@ func (h *ScriptHandler) handleVirtualSvgIcons(path string, content string) (stri
 		return content, false
 	}
 
-	// 拦截 Profile 页面的视频列表数据
+	// 拦截 finderPcFlow - 首页推荐视频列表（参考 wx_channels_download 项目）
+	pcFlowRegex := regexp.MustCompile(`async finderPcFlow\((\w+)\)\{(.*?)\}async`)
+	if pcFlowRegex.MatchString(content) {
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderPcFlow 函数")
+		pcFlowReplace := `async finderPcFlow($1){var result=await(async()=>{$2})();var feeds=result.data.object;console.log("before PCFlowLoaded",result.data);WXU.emit(WXU.Events.PCFlowLoaded,feeds);return result;}async`
+		content = pcFlowRegex.ReplaceAllString(content, pcFlowReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderPcFlow 函数")
+	}
+
+	// 拦截 finderGetCommentDetail - 视频详情（参考 wx_channels_download 项目）
+	feedProfileRegex := regexp.MustCompile(`async finderGetCommentDetail\((\w+)\)\{(.*?)\}async`)
+	if feedProfileRegex.MatchString(content) {
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderGetCommentDetail 函数")
+		feedProfileReplace := `async finderGetCommentDetail($1){var result=await(async()=>{$2})();var feed=result.data.object;console.log("before FeedProfileLoaded",result.data);WXU.emit(WXU.Events.FeedProfileLoaded,feed);return result;}async`
+		content = feedProfileRegex.ReplaceAllString(content, feedProfileReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderGetCommentDetail 函数")
+	}
+
+	// 拦截 Profile 页面的视频列表数据 - 使用事件系统（参考 wx_channels_download 项目）
 	profileListRegex := regexp.MustCompile(`async finderUserPage\((\w+)\)\{return(.*?)\}async`)
-	profileListReplace := `async finderUserPage($1) {
-		var profileResult = await$2;
-		
-		// 检查当前页面类型
-		var isProfilePage = window.location.pathname.includes('/pages/profile') && 
-		                    !window.location.pathname.includes('/pages/home') && 
-		                    !window.location.pathname.includes('/pages/feed');
-		
-		// 如果不是Profile页面，静默返回（不输出日志，不采集数据）
-		if (!isProfilePage) {
-			return profileResult;
-		}
-		
-		// HTML标签清理函数
-		var cleanHtmlTags = function(text) {
-			if (!text || typeof text !== 'string') return text || '';
-			var tempDiv = document.createElement('div');
-			tempDiv.innerHTML = text;
-			var cleaned = tempDiv.textContent || tempDiv.innerText || '';
-			var htmlEntities = {
-				'&nbsp;': ' ',
-				'&amp;': '&',
-				'&lt;': '<',
-				'&gt;': '>',
-				'&quot;': '"',
-				'&apos;': "'",
-				'&#39;': "'",
-				'&#34;': '"'
-			};
-			for (var entity in htmlEntities) {
-				cleaned = cleaned.replace(new RegExp(entity, 'g'), htmlEntities[entity]);
-			}
-			cleaned = cleaned.replace(/&[a-zA-Z0-9#]+;/g, '');
-			return cleaned.trim();
-		};
-		
-			// Profile页面视频列表数据采集
-			if (profileResult && profileResult.data && profileResult.data.object) {
-				var videoCount = profileResult.data.object.length;
-				
-				// 发送日志到后端终端
-				fetch('/__wx_channels_api/tip', {
-					method: 'POST',
-					headers: {'Content-Type': 'application/json'},
-					body: JSON.stringify({msg: '📊 [API拦截] 获取到当前页数据列表，数量: ' + videoCount})
-				}).catch(() => {});
-			
-			// 处理视频列表中的每个视频（finderUserPage只处理普通视频和图片，不处理直播回放）
-			var videoCount = 0;
-			var pictureCount = 0;
-			profileResult.data.object.forEach((item, index) => {
-				try {
-					var data_object = item;
-					if (!data_object || !data_object.objectDesc) {
-						return;
-					}
-					
-					var media = data_object.objectDesc.media[0];
-					if (!media) return;
-					
-					var profile;
-					// finderUserPage只处理普通视频和图片，直播回放由finderLiveUserPage专门处理
-					if (media.mediaType !== 4) {
-						// 图片类型
-						pictureCount++;
-						profile = {
-							type: "picture",
-							id: data_object.id,
-							title: cleanHtmlTags(data_object.objectDesc.description),
-							files: data_object.objectDesc.media,
-							spec: [],
-							contact: data_object.contact
-						};
-					} else {
-						// 普通视频（mediaType === 4）
-						videoCount++;
-						profile = {
-							type: "media",
-							duration: (media.spec && media.spec[0]) ? media.spec[0].durationMs : 0,
-							spec: (media.spec && media.spec.length > 0) ? media.spec.map(s => ({
-								...s,
-								width: s.width || s.videoWidth,
-								height: s.height || s.videoHeight
-							})) : [],
-							title: cleanHtmlTags(data_object.objectDesc.description),
-							coverUrl: media.thumbUrl || media.coverUrl,
-							thumbUrl: media.thumbUrl,
-							fullThumbUrl: media.fullThumbUrl,
-							url: media.url + (media.urlToken || ''),
-							size: media.fileSize,
-							key: media.decodeKey,
-							id: data_object.id,
-							nonce_id: data_object.objectNonceId,
-							nickname: data_object.nickname,
-							username: data_object.contact?.username || '',
-							createtime: data_object.createtime,
-							fileFormat: (media.spec && media.spec.length > 0) ? media.spec.map(o => o.fileFormat) : [],
-							contact: data_object.contact,
-							readCount: data_object.readCount || 0,
-							likeCount: data_object.likeCount || 0,
-							commentCount: data_object.commentCount || 0,
-							favCount: data_object.favCount || 0,
-							forwardCount: data_object.forwardCount || 0,
-							ipRegionInfo: data_object.ipRegionInfo || {},
-							// 新增字段
-							mediaType: media.mediaType,
-							videoWidth: (media.spec && media.spec[0]) ? (media.spec[0].width || media.spec[0].videoWidth || 0) : 0,
-							videoHeight: (media.spec && media.spec[0]) ? (media.spec[0].height || media.spec[0].videoHeight || 0) : 0,
-							videoBitrate: (media.spec && media.spec[0]) ? (media.spec[0].bitrate || 0) : 0,
-							videoCodec: (media.spec && media.spec[0]) ? (media.spec[0].codec || '') : '',
-							audioCodec: (media.spec && media.spec[0]) ? (media.spec[0].audioCodec || '') : '',
-							frameRate: (media.spec && media.spec[0]) ? (media.spec[0].fps || 0) : 0,
-							location: data_object.location || '',
-							latitude: data_object.latitude || 0,
-							longitude: data_object.longitude || 0,
-							poi: data_object.poi || '',
-							extInfo: data_object.extInfo || {},
-							timestamp: Date.now()
-						};
-					}
-					
-				// 添加到profile采集器（使用等待机制）
-				(function(profileData) {
-					// 尝试立即添加
-					if (window.__wx_channels_profile_collector) {
-						window.__wx_channels_profile_collector.addVideoFromAPI(profileData);
-					} else {
-						// 如果采集器还未初始化，等待最多5秒
-						var waitCount = 0;
-						var waitInterval = setInterval(function() {
-							waitCount++;
-							if (window.__wx_channels_profile_collector) {
-								clearInterval(waitInterval);
-								window.__wx_channels_profile_collector.addVideoFromAPI(profileData);
-								console.log('✓ 延迟添加视频到采集器:', profileData.title?.substring(0, 30));
-							} else if (waitCount > 50) {
-								// 超时5秒
-								clearInterval(waitInterval);
-								console.warn('⚠️ 采集器初始化超时，数据已保存到临时存储');
-								// 保存到临时存储
-								window.__wx_channels_temp_profiles = window.__wx_channels_temp_profiles || [];
-								window.__wx_channels_temp_profiles.push(profileData);
-							}
-						}, 100);
-					}
-				})(profile);
-				
-				// 同时添加到全局存储
-				if (window.__wx_channels_store__) {
-					window.__wx_channels_store__.profiles = window.__wx_channels_store__.profiles || [];
-					window.__wx_channels_store__.profiles.push(profile);
-				}
-					
-					// 采集完成后发送总结日志
-					if (index === profileResult.data.object.length - 1) {
-						var summaryMsg = '✅ [API拦截] 视频列表采集完成，共 ' + profileResult.data.object.length + ' 个项目';
-						if (videoCount > 0) summaryMsg += ' (视频: ' + videoCount;
-						if (pictureCount > 0) summaryMsg += (videoCount > 0 ? ', 图片: ' : ' (图片: ') + pictureCount;
-						if (videoCount > 0 || pictureCount > 0) summaryMsg += ')';
-						
-						fetch('/__wx_channels_api/tip', {
-							method: 'POST',
-							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({msg: summaryMsg})
-						}).catch(() => {});
-					}
-				} catch (error) {
-					console.error('[主页采集] 处理视频失败:', error);
-				}
-			});
-		}
-		
-		return profileResult;
-	}async`
-
 	if profileListRegex.MatchString(content) {
-		utils.PrintSeparator()
-		color.Green("✅ [主页页面] 视频列表API拦截器已注入")
-		utils.PrintSeparator()
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderUserPage 函数")
+		// 添加空值检查和详细日志
+		profileListReplace := `async finderUserPage($1){console.log("[Profile API] finderUserPage 调用参数:",$1);var result=await(async()=>{return$2})();console.log("[Profile API] finderUserPage 原始结果:",result);if(result&&result.data&&result.data.object){var feeds=result.data.object;console.log("[Profile API] 提取到",feeds.length,"个视频");WXU.emit(WXU.Events.UserFeedsLoaded,feeds);}else{console.warn("[Profile API] result.data.object 为空",result);}return result;}async`
 		content = profileListRegex.ReplaceAllString(content, profileListReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderUserPage 函数")
 	}
 
-	// 拦截 Profile 页面的直播回放列表数据
+	// 拦截 Profile 页面的直播回放列表数据 - 使用事件系统
 	liveListRegex := regexp.MustCompile(`async finderLiveUserPage\((\w+)\)\{return(.*?)\}async`)
-	liveListReplace := `async finderLiveUserPage($1) {
-		var liveResult = await$2;
-		
-		// 检查当前页面类型
-		var isProfilePage = window.location.pathname.includes('/pages/profile') && 
-		                    !window.location.pathname.includes('/pages/home') && 
-		                    !window.location.pathname.includes('/pages/feed');
-		
-		// 如果不是Profile页面，静默返回
-		if (!isProfilePage) {
-			return liveResult;
-		}
-		
-		// HTML标签清理函数
-		var cleanHtmlTags = function(text) {
-			if (!text || typeof text !== 'string') return text || '';
-			var tempDiv = document.createElement('div');
-			tempDiv.innerHTML = text;
-			var cleaned = tempDiv.textContent || tempDiv.innerText || '';
-			var htmlEntities = {
-				'&nbsp;': ' ',
-				'&amp;': '&',
-				'&lt;': '<',
-				'&gt;': '>',
-				'&quot;': '"',
-				'&apos;': "'",
-				'&#39;': "'",
-				'&#34': '"'
-			};
-			for (var entity in htmlEntities) {
-				cleaned = cleaned.replace(new RegExp(entity, 'g'), htmlEntities[entity]);
-			}
-			cleaned = cleaned.replace(/&[a-zA-Z0-9#]+;/g, '');
-			return cleaned.trim();
-		};
-		
-		// 直播回放列表数据采集
-		if (liveResult && liveResult.data && liveResult.data.object) {
-			var liveCount = liveResult.data.object.length;
-			
-			// 发送日志到后端终端
-			fetch('/__wx_channels_api/tip', {
-				method: 'POST',
-				headers: {'Content-Type': 'application/json'},
-				body: JSON.stringify({msg: '📺 [API拦截] 获取到直播回放列表，数量: ' + liveCount})
-			}).catch(() => {});
-			
-			// 处理直播回放列表中的每个项目
-			liveResult.data.object.forEach((item, index) => {
-				try {
-					var data_object = item;
-					if (!data_object || !data_object.objectDesc) {
-						return;
-					}
-					
-					var media = data_object.objectDesc.media && data_object.objectDesc.media.length > 0 ? data_object.objectDesc.media[0] : null;
-					var liveInfo = data_object.liveInfo || {};
-					
-					// 检查是否有其他直播相关字段
-					var replayUrl = '';
-					if (liveInfo && liveInfo.replayUrl) {
-						replayUrl = liveInfo.replayUrl;
-					} else if (media) {
-						replayUrl = media.liveReplayUrl || media.replayUrl || media.liveStreamUrl || '';
-					}
-					
-					// 构建直播回放数据（与普通视频结构保持一致，但type为live_replay）
-					var profile = {
-						type: "live_replay",
-						id: data_object.id,
-						nonce_id: data_object.objectNonceId,
-						title: cleanHtmlTags(data_object.objectDesc.description || ''),
-						coverUrl: media ? (media.thumbUrl || media.coverUrl || '') : '',
-						thumbUrl: media ? (media.thumbUrl || '') : '',
-						fullThumbUrl: media ? (media.fullThumbUrl || '') : '',
-						url: media ? (media.url + (media.urlToken || '')) : '',
-						replayUrl: replayUrl,
-						size: media ? (media.fileSize || 0) : 0,
-						key: media ? (media.decodeKey || '') : '',
-						duration: (media && media.spec && media.spec[0]) ? media.spec[0].durationMs : (liveInfo.duration || 0),
-						spec: (media && media.spec && media.spec.length > 0) ? media.spec.map(s => ({
-							...s,
-							width: s.width || s.videoWidth || 0,
-							height: s.height || s.videoHeight || 0
-						})) : [],
-						nickname: data_object.nickname || '',
-						username: data_object.contact?.username || '',
-						createtime: data_object.createtime || 0,
-						fileFormat: (media && media.spec && media.spec.length > 0) ? media.spec.map(o => o.fileFormat) : [],
-						contact: data_object.contact || {},
-						readCount: data_object.readCount || 0,
-						likeCount: data_object.likeCount || 0,
-						commentCount: data_object.commentCount || 0,
-						favCount: data_object.favCount || 0,
-						forwardCount: data_object.forwardCount || 0,
-						ipRegionInfo: data_object.ipRegionInfo || {},
-						mediaType: media ? media.mediaType : null,
-						objectType: data_object.objectType,
-						liveInfo: liveInfo,
-						videoWidth: (media && media.spec && media.spec[0]) ? (media.spec[0].width || media.spec[0].videoWidth || 0) : 0,
-						videoHeight: (media && media.spec && media.spec[0]) ? (media.spec[0].height || media.spec[0].videoHeight || 0) : 0,
-						videoBitrate: (media && media.spec && media.spec[0]) ? (media.spec[0].bitrate || 0) : 0,
-						videoCodec: (media && media.spec && media.spec[0]) ? (media.spec[0].codec || '') : '',
-						audioCodec: (media && media.spec && media.spec[0]) ? (media.spec[0].audioCodec || '') : '',
-						frameRate: (media && media.spec && media.spec[0]) ? (media.spec[0].fps || 0) : 0,
-						location: data_object.location || '',
-						latitude: data_object.latitude || 0,
-						longitude: data_object.longitude || 0,
-						poi: data_object.poi || '',
-						extInfo: data_object.extInfo || {},
-						timestamp: Date.now()
-					};
-					
-					// 添加到profile采集器（使用等待机制）
-					(function(profileData) {
-						if (window.__wx_channels_profile_collector) {
-							window.__wx_channels_profile_collector.addVideoFromAPI(profileData);
-						} else {
-							var waitCount = 0;
-							var waitInterval = setInterval(function() {
-								waitCount++;
-								if (window.__wx_channels_profile_collector) {
-									clearInterval(waitInterval);
-									window.__wx_channels_profile_collector.addVideoFromAPI(profileData);
-									console.log('✓ 延迟添加直播回放到采集器:', profileData.title?.substring(0, 30));
-								} else if (waitCount > 50) {
-									clearInterval(waitInterval);
-									window.__wx_channels_temp_profiles = window.__wx_channels_temp_profiles || [];
-									window.__wx_channels_temp_profiles.push(profileData);
-								}
-							}, 100);
-						}
-					})(profile);
-					
-					// 同时添加到全局存储
-					if (window.__wx_channels_store__) {
-						window.__wx_channels_store__.profiles = window.__wx_channels_store__.profiles || [];
-						window.__wx_channels_store__.profiles.push(profile);
-					}
-					
-					// 采集完成后发送总结日志
-					if (index === liveResult.data.object.length - 1) {
-						var summaryMsg = '✅ [API拦截] 直播回放列表采集完成，共 ' + liveResult.data.object.length + ' 个直播回放';
-						fetch('/__wx_channels_api/tip', {
-							method: 'POST',
-							headers: {'Content-Type': 'application/json'},
-							body: JSON.stringify({msg: summaryMsg})
-						}).catch(() => {});
-					}
-				} catch (error) {
-					console.error('[直播回放采集] 处理失败:', error);
-				}
-			});
-		}
-		
-		return liveResult;
-	}async`
-
 	if liveListRegex.MatchString(content) {
-		utils.PrintSeparator()
-		color.Green("✅ [主页页面] 直播回放列表API拦截器已注入")
-		utils.PrintSeparator()
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderLiveUserPage 函数")
+		// 添加空值检查和详细日志
+		liveListReplace := `async finderLiveUserPage($1){console.log("[Profile API] finderLiveUserPage 调用参数:",$1);var result=await(async()=>{return$2})();console.log("[Profile API] finderLiveUserPage 原始结果:",result);if(result&&result.data&&result.data.object){var feeds=result.data.object;console.log("[Profile API] 提取到",feeds.length,"个直播回放");WXU.emit(WXU.Events.UserLiveReplayLoaded,feeds);}else{console.warn("[Profile API] result.data.object 为空",result);}return result;}async`
 		content = liveListRegex.ReplaceAllString(content, liveListReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderLiveUserPage 函数")
 	}
 
-	regexp1 := regexp.MustCompile(`async finderGetCommentDetail\((\w+)\)\{return(.*?)\}async`)
-	replaceStr1 := `async finderGetCommentDetail($1) {
-		var feedResult = await$2;
-		var data_object = feedResult.data.object;
-		if (!data_object.objectDesc) {
-			return feedResult;
-		}
-		
-		// 不再输出调试信息
-		// console.log("原始视频数据对象:", data_object);
-		
-		var media = data_object.objectDesc.media[0];
-		var profile = media.mediaType !== 4 ? {
-			type: "picture",
-			id: data_object.id,
-			title: data_object.objectDesc.description,
-			files: data_object.objectDesc.media,
-			spec: [],
-			contact: data_object.contact
-		} : {
-			type: "media",
-			duration: media.spec[0].durationMs,
-			spec: media.spec.map(s => ({
-				...s,
-				width: s.width || s.videoWidth,
-				height: s.height || s.videoHeight
-			})),
-			title: data_object.objectDesc.description,
-			coverUrl: media.thumbUrl || media.coverUrl, // 使用thumbUrl作为主要封面，如果不存在则使用coverUrl
-			thumbUrl: media.thumbUrl, // 添加thumbUrl字段
-			fullThumbUrl: media.fullThumbUrl, // 添加fullThumbUrl字段
-			url: media.url+media.urlToken,
-			size: media.fileSize,
-			key: media.decodeKey,
-			id: data_object.id,
-			nonce_id: data_object.objectNonceId,
-			nickname: data_object.nickname,
-			createtime: data_object.createtime,
-			fileFormat: media.spec.map(o => o.fileFormat),
-			contact: data_object.contact,
-			// 互动数据
-			readCount: data_object.readCount || 0,
-			likeCount: data_object.likeCount || 0,
-			commentCount: data_object.commentCount || 0,
-			favCount: data_object.favCount || 0,
-			forwardCount: data_object.forwardCount || 0,
-			// IP区域信息
-			ipRegionInfo: data_object.ipRegionInfo || {}
-		};
-		
-		// 如果存在对象扩展信息，添加到profile
-		if (data_object.objectExtend && data_object.objectExtend.monotonicData) {
-			const monotonicData = data_object.objectExtend.monotonicData;
-			if (monotonicData.countInfo) {
-				profile.readCount = monotonicData.countInfo.readCount || profile.readCount;
-				profile.likeCount = monotonicData.countInfo.likeCount || profile.likeCount;
-				profile.commentCount = monotonicData.countInfo.commentCount || profile.commentCount;
-				profile.favCount = monotonicData.countInfo.favCount || profile.favCount;
-				profile.forwardCount = monotonicData.countInfo.forwardCount || profile.forwardCount;
-			}
-		}
-		
-		fetch("/__wx_channels_api/profile", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json"
-			},
-			body: JSON.stringify(profile)
-		});
-		if (window.__wx_channels_store__) {
-		__wx_channels_store__.profile = profile;
-		window.__wx_channels_store__.profiles.push(profile);
-		
-		// 启动视频缓存监控
-		if (window.__wx_channels_video_cache_monitor && profile.type === "media" && profile.size) {
-			console.log("正在初始化视频缓存监控系统...");
-			console.log("视频大小:", (profile.size / (1024 * 1024)).toFixed(2) + 'MB');
-			console.log("视频标题:", profile.title);
-			setTimeout(() => {
-				// 确保Video.js播放器已经加载
-				const vjsPlayer = document.querySelector('.video-js');
-				const video = vjsPlayer ? vjsPlayer.querySelector('video') : document.querySelector('video');
-				
-				if (video) {
-					console.log("找到视频元素，启动缓存监控");
-					console.log("视频readyState:", video.readyState);
-					console.log("视频duration:", video.duration);
-					window.__wx_channels_video_cache_monitor.startMonitoring(profile.size);
-				} else {
-					console.log("未找到视频元素，延迟重试");
-					setTimeout(() => {
-						window.__wx_channels_video_cache_monitor.startMonitoring(profile.size);
-					}, 2000); // 再延迟2秒重试
-				}
-			}, 3000); // 延迟3秒启动，确保Video.js播放器完全初始化
-		}
-		}
-		return feedResult;
-	}async`
-	if regexp1.MatchString(content) {
-		utils.Info("视频详情数据已获取成功！")
-		utils.LogInfo("[视频详情] 视频详情API已拦截 | Path=%s", path)
+	// 拦截分类视频列表API - finderGetRecommend（首页、美食、生活等分类tab）
+	// 函数格式: async finderGetRecommend(t){...return r}async
+	categoryFeedsRegex := regexp.MustCompile(`async finderGetRecommend\((\w+)\)\{(.*?)\}async`)
+	if categoryFeedsRegex.MatchString(content) {
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderGetRecommend 函数")
+		// 拦截返回结果，提取视频列表数据并触发事件
+		// 注意：这个API可能用于多个场景（推荐tab、分类tab等），页面会预加载多个分类的数据
+		// 将API调用参数一起传递，前端根据tagName匹配当前选中的tab
+		categoryFeedsReplace := `async finderGetRecommend($1){var result=await(async()=>{$2})();if(result&&result.data&&result.data.object){var feeds=result.data.object;WXU.emit(WXU.Events.CategoryFeedsLoaded,{feeds:feeds,params:$1});}return result;}async`
+		content = categoryFeedsRegex.ReplaceAllString(content, categoryFeedsReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderGetRecommend 函数")
 	}
-	content = regexp1.ReplaceAllString(content, replaceStr1)
-	regex2 := regexp.MustCompile(`i.default={dialog`)
-	replaceStr2 := `i.default=window.window.__wx_channels_tip__={dialog`
-	content = regex2.ReplaceAllString(content, replaceStr2)
-	regex5 := regexp.MustCompile(`this.updateDetail\(o\)`)
-	replaceStr5 := `(() => {
-		if (Object.keys(o).length===0){
-		return;
-		}
+
+	// 拦截搜索API - finderPCSearch（PC端搜索）
+	// 函数格式: async finderPCSearch(n){...return(...),t}async
+	// 在最后的 return 之前插入代码，然后保持 ,t}async 不变
+	searchPCRegex := regexp.MustCompile(`(async finderPCSearch\([^)]+\)\{.*?)(,t\}async)`)
+	
+	if searchPCRegex.MatchString(content) {
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderPCSearch 函数")
+		// 在 ,t 之前插入代码，保持 ,t}async 完整
+		// 从 acctList 中提取正在直播的账号，添加调试日志
+		searchPCReplace := `$1,t&&t.data&&(function(){var lives=t.data.liveObjectList||[];var accounts=[];var liveCount=0;if(t.data.acctList){t.data.acctList.forEach(function(info){if(info.liveStatus===1){liveCount++;console.log("[搜索API] 发现直播账号:",info.contact?info.contact.nickname:"未知",info.liveStatus,info.liveInfo);}if(info.liveStatus===1&&info.liveInfo){lives.push({id:info.contact.username,objectId:info.contact.username,nickname:info.contact.nickname,username:info.contact.username,description:info.liveInfo.description||"",streamUrl:info.liveInfo.streamUrl,coverUrl:info.liveInfo.media&&info.liveInfo.media[0]?info.liveInfo.media[0].thumbUrl:"",thumbUrl:info.liveInfo.media&&info.liveInfo.media[0]?info.liveInfo.media[0].thumbUrl:"",liveInfo:info.liveInfo,type:"live"});}accounts.push(info);});}if(liveCount>0){console.log("[搜索API] 共发现",liveCount,"个直播账号，成功提取",lives.length,"个");}var searchData={feeds:t.data.objectList||[],accounts:accounts,lives:lives};WXU.emit("SearchResultLoaded",searchData);})()$2`
+		content = searchPCRegex.ReplaceAllString(content, searchPCReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderPCSearch 函数")
+	}
+
+	// 拦截搜索API - finderSearch（移动端搜索）
+	// 使用非贪婪匹配，匹配到最后的 ,t}async 模式
+	searchRegex := regexp.MustCompile(`(async finderSearch\([^)]+\)\{.*?)(,t\}async)`)
+	
+	if searchRegex.MatchString(content) {
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中成功拦截 finderSearch 函数")
+		// 从 infoList 中提取正在直播的账号，添加调试日志
+		searchReplace := `$1,t&&t.data&&(function(){var lives=[];var accounts=[];var liveCount=0;if(t.data.infoList){t.data.infoList.forEach(function(info){if(info.liveStatus===1){liveCount++;console.log("[搜索API] 发现直播账号:",info.contact?info.contact.nickname:"未知",info.liveStatus,info.liveInfo);}if(info.liveStatus===1&&info.liveInfo){lives.push({id:info.contact.username,objectId:info.contact.username,nickname:info.contact.nickname,username:info.contact.username,description:info.liveInfo.description||"",streamUrl:info.liveInfo.streamUrl,coverUrl:info.liveInfo.media&&info.liveInfo.media[0]?info.liveInfo.media[0].thumbUrl:"",thumbUrl:info.liveInfo.media&&info.liveInfo.media[0]?info.liveInfo.media[0].thumbUrl:"",liveInfo:info.liveInfo,type:"live"});}accounts.push(info);});}if(liveCount>0){console.log("[搜索API] 共发现",liveCount,"个直播账号，成功提取",lives.length,"个");}var searchData={feeds:t.data.objectList||[],accounts:accounts,lives:lives};WXU.emit("SearchResultLoaded",searchData);})()$2`
+		content = searchRegex.ReplaceAllString(content, searchReplace)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 finderSearch 函数")
+	}
+
+	// 拦截 export 语句，提取所有导出的 API 函数
+	// 格式: export{xxx as yyy,zzz as www,...}
+	exportBlockRegex := regexp.MustCompile(`export\s*\{([^}]+)\}`)
+	exportRegex := regexp.MustCompile(`export\s*\{`)
+	
+	if exportBlockRegex.MatchString(content) {
+		utils.LogInfo("[API拦截] ✅ 在virtual_svg-icons-register中找到 export 语句")
 		
-		// 不再输出调试信息
-		// console.log("updateDetail原始数据:", o);
-		
-		var data_object = o;
-		var media = data_object.objectDesc.media[0];
-		var profile = media.mediaType !== 4 ? {
-			type: "picture",
-			id: data_object.id,
-			title: data_object.objectDesc.description,
-			files: data_object.objectDesc.media,
-			spec: [],
-			contact: data_object.contact
-		} : {
-			type: "media",
-			duration: media.spec[0].durationMs,
-			spec: media.spec.map(s => ({
-				...s,
-				width: s.width || s.videoWidth,
-				height: s.height || s.videoHeight
-			})),
-			title: data_object.objectDesc.description,
-			coverUrl: media.thumbUrl || media.coverUrl, // 使用thumbUrl作为主要封面，如果不存在则使用coverUrl
-			thumbUrl: media.thumbUrl, // 添加thumbUrl字段
-			fullThumbUrl: media.fullThumbUrl, // 添加fullThumbUrl字段
-			url: media.url+media.urlToken,
-			size: media.fileSize,
-			key: media.decodeKey,
-			id: data_object.id,
-			nonce_id: data_object.objectNonceId,
-			nickname: data_object.nickname,
-			createtime: data_object.createtime,
-			fileFormat: media.spec.map(o => o.fileFormat),
-			contact: data_object.contact,
-			// 互动数据
-			readCount: data_object.readCount || 0,
-			likeCount: data_object.likeCount || 0,
-			commentCount: data_object.commentCount || 0,
-			favCount: data_object.favCount || 0,
-			forwardCount: data_object.forwardCount || 0,
-			// IP区域信息
-			ipRegionInfo: data_object.ipRegionInfo || {}
-		};
-		
-		// 如果存在对象扩展信息，添加到profile
-		if (data_object.objectExtend && data_object.objectExtend.monotonicData) {
-			const monotonicData = data_object.objectExtend.monotonicData;
-			if (monotonicData.countInfo) {
-				profile.readCount = monotonicData.countInfo.readCount || profile.readCount;
-				profile.likeCount = monotonicData.countInfo.likeCount || profile.likeCount;
-				profile.commentCount = monotonicData.countInfo.commentCount || profile.commentCount;
-				profile.favCount = monotonicData.countInfo.favCount || profile.favCount;
-				profile.forwardCount = monotonicData.countInfo.forwardCount || profile.forwardCount;
+		// 提取 export 块中的内容
+		matches := exportBlockRegex.FindStringSubmatch(content)
+		if len(matches) >= 2 {
+			exportContent := matches[1]
+			utils.LogInfo("[API拦截] Export 内容: %s", exportContent[:min(100, len(exportContent))])
+			
+			// 解析导出的函数名
+			items := strings.Split(exportContent, ",")
+			var locals []string
+			for _, item := range items {
+				p := strings.TrimSpace(item)
+				if p == "" {
+					continue
+				}
+				// 处理 "xxx as yyy" 格式
+				idx := strings.Index(p, " as ")
+				local := p
+				if idx != -1 {
+					local = strings.TrimSpace(p[:idx])
+				}
+				if local != "" && local != " " {
+					locals = append(locals, local)
+				}
+			}
+			
+			if len(locals) > 0 {
+				utils.LogInfo("[API拦截] 提取到 %d 个导出函数", len(locals))
+				apiMethods := "{" + strings.Join(locals, ",") + "}"
+				// 转义 $ 符号
+				apiMethodsEscaped := strings.ReplaceAll(apiMethods, "$", "$$")
+				
+				// 在 export 之前插入 API 加载事件
+				jsWXAPI := ";WXU.emit(WXU.Events.APILoaded," + apiMethodsEscaped + ");export{"
+				content = exportRegex.ReplaceAllString(content, jsWXAPI)
+				utils.LogInfo("[API拦截] ✅ 已注入 APILoaded 事件")
 			}
 		}
-		
-		if (window.__wx_channels_store__) {
-	window.__wx_channels_store__.profiles.push(profile);
-		}
-		})(),this.updateDetail(o)`
-	content = regex5.ReplaceAllString(content, replaceStr5)
+	} else {
+		utils.LogInfo("[API拦截] ❌ 在virtual_svg-icons-register中未找到 export 语句")
+	}
+
 	return content, true
+}
+
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // handleFeedDetail 处理FeedDetail.publish JS文件
@@ -3112,15 +1325,8 @@ func (h *ScriptHandler) handleFeedDetail(path string, content string) (string, b
 		return content, false
 	}
 
-	regex := regexp.MustCompile(`,"投诉"\)]`)
-	replaceStr := `,"投诉"),...(() => {
-	if (window.__wx_channels_store__ && window.__wx_channels_store__.profile) {
-		return window.__wx_channels_store__.profile.spec.map((sp) => {
-			return f("div",{class:"context-item",role:"button",onClick:() => __wx_channels_handle_click_download__(sp)},__wx_format_quality_option(sp));
-		});
-	}
-	})(),f("div",{class:"context-item",role:"button",onClick:()=>__wx_channels_handle_click_download__()},"原始视频"),f("div",{class:"context-item",role:"button",onClick:__wx_channels_download_cur__},"当前视频"),f("div",{class:"context-item",role:"button",onClick:()=>__wx_channels_handle_download_cover()},"下载封面"),f("div",{class:"context-item",role:"button",onClick:()=>window.__wx_channels_start_comment_collection&&window.__wx_channels_start_comment_collection()},"采集评论")]`
-	content = regex.ReplaceAllString(content, replaceStr)
+	// Feed详情页现在由 feed.js 模块处理，不再需要旧的注入代码
+	utils.LogInfo("[Feed详情] Feed详情页由 feed.js 模块处理")
 	return content, true
 }
 
@@ -3136,170 +1342,48 @@ func (h *ScriptHandler) handleWorkerRelease(path string, content string) (string
 	return content, true
 }
 
-// handleVuexStores 处理vuexStores.publish JS文件
-func (h *ScriptHandler) handleVuexStores(Conn *SunnyNet.HttpConn, path string, content string) (string, bool) {
-	if !util.Includes(path, "vuexStores.publish") {
-		return content, false
-	}
-
-	utils.LogInfo("[Home数据采集] 正在处理 vuexStores.publish 文件")
-
-	// 策略1：拦截 goToNextFlowFeed (下一个视频)
-	callNextRegex := regexp.MustCompile(`(\w)\.goToNextFlowFeed\(\{goBackWhenEnd:[^,]+,eleInfo:\{[^}]+\}[^)]*\}\)`)
-	// 策略2：拦截 goToPrevFlowFeed (上一个视频)
-	callPrevRegex := regexp.MustCompile(`(\w)\.goToPrevFlowFeed\(\{eleInfo:\{[^}]+\}\}\)`)
-
-	// 数据采集代码（通用，包含互动数据）- 精简日志版本
-	captureCode := `setTimeout(function(){try{var __tab=Ue.value;if(__tab&&__tab.currentFeed){var __feed=__tab.currentFeed;if(__feed.objectDesc){var __media=__feed.objectDesc.media[0];var __duration=0;if(__media&&__media.spec&&__media.spec[0]&&__media.spec[0].durationMs){__duration=__media.spec[0].durationMs;}var __profile={type:"media",media:__media,duration:__duration,spec:__media.spec.map(function(s){return{width:s.width||s.videoWidth,height:s.height||s.videoHeight,bitrate:s.bitrate,fileFormat:s.fileFormat}}),title:__feed.objectDesc.description,coverUrl:__media.thumbUrl,url:__media.url+__media.urlToken,size:__media.fileSize,key:__media.decodeKey,id:__feed.id,nonce_id:__feed.objectNonceId,nickname:(__feed.contact&&__feed.contact.nickname)?__feed.contact.nickname:"",createtime:__feed.createtime,fileFormat:__media.spec.map(function(o){return o.fileFormat}),contact:__feed.contact,readCount:__feed.readCount,likeCount:__feed.likeCount,commentCount:__feed.commentCount,favCount:__feed.favCount,forwardCount:__feed.forwardCount,ipRegionInfo:__feed.ipRegionInfo};fetch("/__wx_channels_api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(__profile)});window.__wx_channels_store__=window.__wx_channels_store__||{profile:null,buffers:[],keys:{}};window.__wx_channels_store__.profile=__profile;fetch("/__wx_channels_api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({msg:"📹 [Home] "+(__profile.nickname||"未知作者")+" - "+(__profile.title||"").substring(0,30)+"..."})}).catch(function(){});}}}catch(__e){console.error("[Home] 采集失败:",__e)}},500)`
-
-	// 替换 goToNextFlowFeed
-	if callNextRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] 成功拦截 goToNextFlowFeed 函数")
-		replaceNext := `$1.goToNextFlowFeed({goBackWhenEnd:f.goBackWhenEnd,eleInfo:{type:f.source,tagId:Ct.value},ignoreCoolDown:f.ignoreCoolDown});` + captureCode
-		content = callNextRegex.ReplaceAllString(content, replaceNext)
-	} else {
-		utils.LogInfo("[Home数据采集] 未找到 goToNextFlowFeed 函数")
-	}
-
-	// 替换 goToPrevFlowFeed
-	if callPrevRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] 成功拦截 goToPrevFlowFeed 函数")
-		replacePrev := `$1.goToPrevFlowFeed({eleInfo:{type:f.source,tagId:Ct.value}});` + captureCode
-		content = callPrevRegex.ReplaceAllString(content, replacePrev)
-	} else {
-		utils.LogInfo("[Home数据采集] 未找到 goToPrevFlowFeed 函数")
-	}
-
-	// 禁用浏览器缓存，确保每次都能拦截到最新的代码
-	Conn.Response.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	Conn.Response.Header.Set("Pragma", "no-cache")
-	Conn.Response.Header.Set("Expires", "0")
-
-	Conn.Response.Body = io.NopCloser(bytes.NewBuffer([]byte(content)))
-	return content, true
-}
-
-// handleGlobalPublish 处理global.publish JS文件
-func (h *ScriptHandler) handleGlobalPublish(Conn *SunnyNet.HttpConn, path string, content string) (string, bool) {
-	if !util.Includes(path, "global.publish") {
-		return content, false
-	}
-
-	utils.LogInfo("[Home数据采集] 正在处理 global.publish 文件")
-
-	// 策略1：拦截 goToNextFlowFeed (下一个视频)
-	callNextRegex := regexp.MustCompile(`(\w)\.goToNextFlowFeed\(\{goBackWhenEnd:[^,]+,eleInfo:\{[^}]+\}[^)]*\}\)`)
-	// 策略2：拦截 goToPrevFlowFeed (上一个视频)
-	callPrevRegex := regexp.MustCompile(`(\w)\.goToPrevFlowFeed\(\{eleInfo:\{[^}]+\}\}\)`)
-
-	// 数据采集代码（通用，包含互动数据）- 精简日志版本
-	captureCode := `setTimeout(function(){try{var __tab=Ue.value;if(__tab&&__tab.currentFeed){var __feed=__tab.currentFeed;if(__feed.objectDesc){var __media=__feed.objectDesc.media[0];var __duration=0;if(__media&&__media.spec&&__media.spec[0]&&__media.spec[0].durationMs){__duration=__media.spec[0].durationMs;}var __profile={type:"media",media:__media,duration:__duration,spec:__media.spec.map(function(s){return{width:s.width||s.videoWidth,height:s.height||s.videoHeight,bitrate:s.bitrate,fileFormat:s.fileFormat}}),title:__feed.objectDesc.description,coverUrl:__media.thumbUrl,url:__media.url+__media.urlToken,size:__media.fileSize,key:__media.decodeKey,id:__feed.id,nonce_id:__feed.objectNonceId,nickname:(__feed.contact&&__feed.contact.nickname)?__feed.contact.nickname:"",createtime:__feed.createtime,fileFormat:__media.spec.map(function(o){return o.fileFormat}),contact:__feed.contact,readCount:__feed.readCount,likeCount:__feed.likeCount,commentCount:__feed.commentCount,favCount:__feed.favCount,forwardCount:__feed.forwardCount,ipRegionInfo:__feed.ipRegionInfo};fetch("/__wx_channels_api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(__profile)});window.__wx_channels_store__=window.__wx_channels_store__||{profile:null,buffers:[],keys:{}};window.__wx_channels_store__.profile=__profile;fetch("/__wx_channels_api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({msg:"📹 [Home] "+(__profile.nickname||"未知作者")+" - "+(__profile.title||"").substring(0,30)+"..."})}).catch(function(){});}}}catch(__e){console.error("[Home] 采集失败:",__e)}},500)`
-
-	// 替换 goToNextFlowFeed
-	if callNextRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] 在global.publish中成功拦截 goToNextFlowFeed 函数")
-		replaceNext := `$1.goToNextFlowFeed({goBackWhenEnd:f.goBackWhenEnd,eleInfo:{type:f.source,tagId:Ct.value},ignoreCoolDown:f.ignoreCoolDown});` + captureCode
-		content = callNextRegex.ReplaceAllString(content, replaceNext)
-	} else {
-		utils.LogInfo("[Home数据采集] 在global.publish中未找到 goToNextFlowFeed 函数")
-	}
-
-	// 替换 goToPrevFlowFeed
-	if callPrevRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] 在global.publish中成功拦截 goToPrevFlowFeed 函数")
-		replacePrev := `$1.goToPrevFlowFeed({eleInfo:{type:f.source,tagId:Ct.value}});` + captureCode
-		content = callPrevRegex.ReplaceAllString(content, replacePrev)
-	} else {
-		utils.LogInfo("[Home数据采集] 在global.publish中未找到 goToPrevFlowFeed 函数")
-	}
-
-	// 禁用浏览器缓存，确保每次都能拦截到最新的代码
-	Conn.Response.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	Conn.Response.Header.Set("Pragma", "no-cache")
-	Conn.Response.Header.Set("Expires", "0")
-
-	Conn.Response.Body = io.NopCloser(bytes.NewBuffer([]byte(content)))
-	return content, true
-}
-
-// handleConnectPublish 处理connect.publish JS文件（可能是新的vuexStores）
+// handleConnectPublish 处理connect.publish JS文件（参考 wx_channels_download 项目的实现）
 func (h *ScriptHandler) handleConnectPublish(Conn *SunnyNet.HttpConn, path string, content string) (string, bool) {
 	if !util.Includes(path, "connect.publish") {
 		return content, false
 	}
 
-	utils.LogInfo("[Home数据采集] ✅ 正在处理 connect.publish 文件（可能是新的状态管理文件）")
+	utils.LogInfo("[Home数据采集] ✅ 正在处理 connect.publish 文件")
 
-	// 策略1：拦截 goToNextFlowFeed (下一个视频)
-	// 修复正则：允许 eleInfo 后面有更多参数（如 ignoreCoolDown）
-	callNextRegex := regexp.MustCompile(`(\w)\.goToNextFlowFeed\(\{[^}]*goBackWhenEnd:[^,}]+[^}]*eleInfo:\{[^}]+\}[^}]*\}\)`)
-	// 策略2：拦截 goToPrevFlowFeed (上一个视频)
-	callPrevRegex := regexp.MustCompile(`(\w)\.goToPrevFlowFeed\(\{[^}]*eleInfo:\{[^}]+\}[^}]*\}\)`)
-
-	// 数据采集代码（智能查找变量名：yt, Dt, ae, Ue）- 带调试日志
-	captureCode := `setTimeout(function(){try{console.log("[Home采集] 开始执行...");var __tab=null;if(typeof yt!=="undefined"&&yt&&yt.value){__tab=yt.value;console.log("[Home采集] 使用yt.value");}else if(typeof Dt!=="undefined"&&Dt&&Dt.value){__tab=Dt.value;console.log("[Home采集] 使用Dt.value");}else if(typeof ae!=="undefined"&&ae&&ae.value){__tab=ae.value;console.log("[Home采集] 使用ae.value");}else if(typeof Ue!=="undefined"&&Ue&&Ue.value){__tab=Ue.value;console.log("[Home采集] 使用Ue.value");}else{console.log("[Home采集] 未找到tab变量");return;}if(__tab&&__tab.currentFeed){var __feed=__tab.currentFeed;console.log("[Home采集] 找到currentFeed");if(__feed.objectDesc){var __media=__feed.objectDesc.media[0];console.log("[Home采集] media高度:",__media.height);var __duration=0;if(__media&&__media.spec&&__media.spec[0]&&__media.spec[0].durationMs){__duration=__media.spec[0].durationMs;}var __profile={type:"media",media:__media,duration:__duration,spec:__media.spec.map(function(s){return{width:s.width||s.videoWidth,height:s.height||s.videoHeight,bitrate:s.bitrate,fileFormat:s.fileFormat}}),title:__feed.objectDesc.description,coverUrl:__media.thumbUrl,url:__media.url+__media.urlToken,size:__media.fileSize,key:__media.decodeKey,id:__feed.id,nonce_id:__feed.objectNonceId,nickname:(__feed.contact&&__feed.contact.nickname)?__feed.contact.nickname:"",createtime:__feed.createtime,fileFormat:__media.spec.map(function(o){return o.fileFormat}),contact:__feed.contact,readCount:__feed.readCount,likeCount:__feed.likeCount,commentCount:__feed.commentCount,favCount:__feed.favCount,forwardCount:__feed.forwardCount,ipRegionInfo:__feed.ipRegionInfo};console.log("[Home采集] 发送profile请求...");fetch("/__wx_channels_api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(__profile)}).then(function(){console.log("[Home采集] profile请求成功");}).catch(function(e){console.error("[Home采集] profile请求失败:",e);});window.__wx_channels_store__=window.__wx_channels_store__||{profile:null,buffers:[],keys:{}};window.__wx_channels_store__.profile=__profile;fetch("/__wx_channels_api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({msg:"📹 [Home] "+(__profile.nickname||"未知作者")+" - "+(__profile.title||"").substring(0,30)+"..."})}).catch(function(){});}}}catch(__e){console.error("[Home采集] 失败:",__e)}},500)`
-
-	// 替换 goToNextFlowFeed
-	if callNextRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] ✅ 在connect.publish中成功拦截 goToNextFlowFeed 函数")
-		// 保留原始的函数调用，只在后面添加采集代码
-		replaceNext := `$0;` + captureCode
-		content = callNextRegex.ReplaceAllString(content, replaceNext)
+	// 首先找到 flowTab 对应的变量名（可能是 yt, nn 或其他）
+	// 格式: flowTab:变量名,flowTabId:
+	flowTabReg := regexp.MustCompile(`flowTab:([a-zA-Z]{1,}),flowTabId:`)
+	flowTabVar := "yt" // 默认值
+	if matches := flowTabReg.FindStringSubmatch(content); len(matches) > 1 {
+		flowTabVar = matches[1]
+		utils.LogInfo("[Home数据采集] ✅ 找到 flowTab 变量名: %s", flowTabVar)
 	} else {
-		utils.LogInfo("[Home数据采集] ❌ 在connect.publish中未找到 goToNextFlowFeed 函数")
+		utils.LogInfo("[Home数据采集] ⚠️ 未找到 flowTab 变量名，使用默认值: %s", flowTabVar)
 	}
 
-	// 替换 goToPrevFlowFeed
-	if callPrevRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] ✅ 在connect.publish中成功拦截 goToPrevFlowFeed 函数")
-		// 保留原始的函数调用，只在后面添加采集代码
-		replacePrev := `$0;` + captureCode
-		content = callPrevRegex.ReplaceAllString(content, replacePrev)
+	// 参考 wx_channels_download 项目的正则表达式，匹配函数定义而不是函数调用
+	// 原始代码格式: goToNextFlowFeed:函数名 或 goToPrevFlowFeed:函数名
+	goToNextFlowReg := regexp.MustCompile(`goToNextFlowFeed:([a-zA-Z]{1,})`)
+	goToPrevFlowReg := regexp.MustCompile(`goToPrevFlowFeed:([a-zA-Z]{1,})`)
+
+	// 替换 goToNextFlowFeed 函数定义 - 使用 WXU.emit 发送事件（与 wx_channels_download 完全一致）
+	if goToNextFlowReg.MatchString(content) {
+		utils.LogInfo("[Home数据采集] ✅ 在connect.publish中成功拦截 goToNextFlowFeed 函数定义")
+		// 使用动态获取的 flowTab 变量名
+		jsGoNextFeed := fmt.Sprintf("goToNextFlowFeed:async function(v){await $1(v);console.log('goToNextFlowFeed',%s);if(!%s||!%s.value.feeds){return;}var feed=%s.value.feeds[%s.value.currentFeedIndex];console.log('before GotoNextFeed',%s,feed);WXU.emit(WXU.Events.GotoNextFeed,feed);}", flowTabVar, flowTabVar, flowTabVar, flowTabVar, flowTabVar, flowTabVar)
+		content = goToNextFlowReg.ReplaceAllString(content, jsGoNextFeed)
 	} else {
-		utils.LogInfo("[Home数据采集] ❌ 在connect.publish中未找到 goToPrevFlowFeed 函数")
+		utils.LogInfo("[Home数据采集] ❌ 在connect.publish中未找到 goToNextFlowFeed 函数定义")
 	}
 
-	// 禁用浏览器缓存，确保每次都能拦截到最新的代码
-	Conn.Response.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	Conn.Response.Header.Set("Pragma", "no-cache")
-	Conn.Response.Header.Set("Expires", "0")
-
-	Conn.Response.Body = io.NopCloser(bytes.NewBuffer([]byte(content)))
-	return content, true
-}
-
-// handleFinderHomePublish 处理FinderHome.publish JS文件（Home页面主逻辑）
-func (h *ScriptHandler) handleFinderHomePublish(Conn *SunnyNet.HttpConn, path string, content string) (string, bool) {
-	if !util.Includes(path, "FinderHome.publish") {
-		return content, false
-	}
-
-	utils.LogInfo("[Home数据采集] 🎯 正在处理 FinderHome.publish 文件（Home页面主逻辑文件）")
-
-	// 策略1：拦截 goToNextFlowFeed (下一个视频)
-	callNextRegex := regexp.MustCompile(`(\w)\.goToNextFlowFeed\(\{goBackWhenEnd:[^,]+,eleInfo:\{[^}]+\}[^)]*\}\)`)
-	// 策略2：拦截 goToPrevFlowFeed (上一个视频)
-	callPrevRegex := regexp.MustCompile(`(\w)\.goToPrevFlowFeed\(\{eleInfo:\{[^}]+\}\}\)`)
-
-	// 数据采集代码（通用，包含互动数据）- 精简日志版本
-	captureCode := `setTimeout(function(){try{var __tab=Ue.value;if(__tab&&__tab.currentFeed){var __feed=__tab.currentFeed;if(__feed.objectDesc){var __media=__feed.objectDesc.media[0];var __duration=0;if(__media&&__media.spec&&__media.spec[0]&&__media.spec[0].durationMs){__duration=__media.spec[0].durationMs;}var __profile={type:"media",media:__media,duration:__duration,spec:__media.spec.map(function(s){return{width:s.width||s.videoWidth,height:s.height||s.videoHeight,bitrate:s.bitrate,fileFormat:s.fileFormat}}),title:__feed.objectDesc.description,coverUrl:__media.thumbUrl,url:__media.url+__media.urlToken,size:__media.fileSize,key:__media.decodeKey,id:__feed.id,nonce_id:__feed.objectNonceId,nickname:(__feed.contact&&__feed.contact.nickname)?__feed.contact.nickname:"",createtime:__feed.createtime,fileFormat:__media.spec.map(function(o){return o.fileFormat}),contact:__feed.contact,readCount:__feed.readCount,likeCount:__feed.likeCount,commentCount:__feed.commentCount,favCount:__feed.favCount,forwardCount:__feed.forwardCount,ipRegionInfo:__feed.ipRegionInfo};fetch("/__wx_channels_api/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(__profile)});window.__wx_channels_store__=window.__wx_channels_store__||{profile:null,buffers:[],keys:{}};window.__wx_channels_store__.profile=__profile;fetch("/__wx_channels_api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({msg:"📹 [Home] "+(__profile.nickname||"未知作者")+" - "+(__profile.title||"").substring(0,30)+"..."})}).catch(function(){});}}}catch(__e){console.error("[Home] 采集失败:",__e)}},500)`
-
-	// 替换 goToNextFlowFeed
-	if callNextRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] ✅ 在FinderHome.publish中成功拦截 goToNextFlowFeed 函数")
-		replaceNext := `$1.goToNextFlowFeed({goBackWhenEnd:f.goBackWhenEnd,eleInfo:{type:f.source,tagId:Ct.value},ignoreCoolDown:f.ignoreCoolDown});` + captureCode
-		content = callNextRegex.ReplaceAllString(content, replaceNext)
+	// 替换 goToPrevFlowFeed 函数定义 - 使用 WXU.emit 发送事件
+	if goToPrevFlowReg.MatchString(content) {
+		utils.LogInfo("[Home数据采集] ✅ 在connect.publish中成功拦截 goToPrevFlowFeed 函数定义")
+		// 使用动态获取的 flowTab 变量名
+		jsGoPrevFeed := fmt.Sprintf("goToPrevFlowFeed:async function(v){await $1(v);console.log('goToPrevFlowFeed',%s);if(!%s||!%s.value.feeds){return;}var feed=%s.value.feeds[%s.value.currentFeedIndex];console.log('before GotoPrevFeed',%s,feed);WXU.emit(WXU.Events.GotoPrevFeed,feed);}", flowTabVar, flowTabVar, flowTabVar, flowTabVar, flowTabVar, flowTabVar)
+		content = goToPrevFlowReg.ReplaceAllString(content, jsGoPrevFeed)
 	} else {
-		utils.LogInfo("[Home数据采集] ❌ 在FinderHome.publish中未找到 goToNextFlowFeed 函数")
-	}
-
-	// 替换 goToPrevFlowFeed
-	if callPrevRegex.MatchString(content) {
-		utils.LogInfo("[Home数据采集] ✅ 在FinderHome.publish中成功拦截 goToPrevFlowFeed 函数")
-		replacePrev := `$1.goToPrevFlowFeed({eleInfo:{type:f.source,tagId:Ct.value}});` + captureCode
-		content = callPrevRegex.ReplaceAllString(content, replacePrev)
-	} else {
-		utils.LogInfo("[Home数据采集] ❌ 在FinderHome.publish中未找到 goToPrevFlowFeed 函数")
+		utils.LogInfo("[Home数据采集] ❌ 在connect.publish中未找到 goToPrevFlowFeed 函数定义")
 	}
 
 	// 禁用浏览器缓存，确保每次都能拦截到最新的代码

@@ -1061,10 +1061,11 @@ func (h *BatchHandler) HandleBatchCancel(Conn *SunnyNet.HttpConn) bool {
 
 		// 将正在下载的任务状态更新为 pending（表示已取消，但保留在列表中）
 		// 这样前端可以通过 running=0 判断下载已取消
+		// 注意：保留进度以支持断点续传
 		for i := range h.tasks {
 			if h.tasks[i].Status == "downloading" {
 				h.tasks[i].Status = "pending"
-				h.tasks[i].Progress = 0
+				// 不重置进度，保留已下载的进度以支持断点续传
 			}
 		}
 	}
@@ -1170,9 +1171,17 @@ func (h *BatchHandler) HandleBatchResume(Conn *SunnyNet.HttpConn) bool {
 	defer h.mu.Unlock()
 
 	// 检查是否有待处理的任务
+	// 包括 pending 状态的任务，以及 failed 状态但错误为"下载已取消"的任务
 	pendingCount := 0
-	for _, t := range h.tasks {
-		if t.Status == "pending" {
+	for i := range h.tasks {
+		if h.tasks[i].Status == "pending" {
+			pendingCount++
+		} else if h.tasks[i].Status == "failed" && h.tasks[i].Error == "下载已取消" {
+			// 将因取消而失败的任务重置为 pending 状态，以便继续下载
+			// 注意：保留进度以支持断点续传
+			h.tasks[i].Status = "pending"
+			h.tasks[i].Error = ""
+			// 不重置进度，保留已下载的进度以支持断点续传
 			pendingCount++
 		}
 	}
