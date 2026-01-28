@@ -1,0 +1,16 @@
+# wx_channel 配置文件
+
+# 远程管理配置
+# 中央服务器地址 (WebSocket 格式)
+cloud_hub_url: "ws://wx.dongzuren.com/ws/client"
+
+# 机器识别 ID (你在网页后台看到的名字)
+machine_id: "My-Laptop"
+
+# 通信密钥 (如果服务器设置了的话)
+cloud_secret: ""
+
+# 其他基础配置
+port: 2025
+download_dir: "downloads"
+show_log_button: true

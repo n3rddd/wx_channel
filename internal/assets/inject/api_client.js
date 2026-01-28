@@ -234,14 +234,18 @@ window.__wx_api_client = {
         console.log('[API客户端] 获取视频详情:', body);
 
         try {
-          var oid = body.objectId || body.oid;
-          var nid = body.nonceId || body.nid;
+          var oid = body.objectId || body.object_id || body.oid || '';
+          var nid = body.nonceId || body.nonce_id || body.nid || '';
 
           // 如果提供了 URL，从 URL 中解析 oid 和 nid
           if (body.url) {
             var u = new URL(decodeURIComponent(body.url));
             oid = window.WXU.API.decodeBase64ToUint64String(u.searchParams.get('oid'));
             nid = window.WXU.API.decodeBase64ToUint64String(u.searchParams.get('nid'));
+          }
+
+          if (!oid || !nid) {
+            throw new Error('缺失 object_id 或 nonce_id');
           }
 
           var payload = {
@@ -251,7 +255,7 @@ window.__wx_api_client = {
             direction: 2,
             identityScene: 2,
             pullScene: 6,
-            objectid: oid.includes('_') ? oid.split('_')[0] : oid,
+            objectid: String(oid).includes('_') ? String(oid).split('_')[0] : String(oid),
             objectNonceId: nid,
             encrypted_objectid: ''
           };

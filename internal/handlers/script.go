@@ -497,7 +497,7 @@ func (h *ScriptHandler) getDownloadTrackerScript() string {
 					const path = data.relativePath || data.path || '';
 					if (window.__wx_log) {
 						window.__wx_log({
-							msg: '✓ ' + msg + (path ? '\n路径: ' + path : '')
+							msg: '✓ ' + msg
 						});
 					}
 					console.log('✓ [封面下载] 封面已保存:', path);

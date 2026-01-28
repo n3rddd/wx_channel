@@ -20,6 +20,7 @@ import (
 
 	"wx_channel/internal/api"
 	"wx_channel/internal/assets"
+	"wx_channel/internal/cloud"
 	"wx_channel/internal/config"
 	"wx_channel/internal/database"
 	"wx_channel/internal/handlers"
@@ -56,9 +57,10 @@ type App struct {
 	StaticFileHandler *handlers.StaticFileHandler
 
 	// 服务
-	WSHub         *websocket.Hub
-	SearchService *api.SearchService
-	GopeedService *services.GopeedService // Add GopeedService
+	WSHub          *websocket.Hub
+	SearchService  *api.SearchService
+	GopeedService  *services.GopeedService // Add GopeedService
+	CloudConnector *cloud.Connector
 
 	// 路由器
 	APIRouter *router.APIRouter
@@ -263,63 +265,73 @@ func (app *App) Run() {
 		utils.Info("✓ 证书已存在，无需重新安装。")
 	}
 
-	app.Sunny.SetGoCallback(GlobalHttpCallback, nil, nil, nil)
+	// 1. 立即启动核心驱动
 	sunnyErr := app.Sunny.Start().Error
 	if sunnyErr != nil {
-		utils.HandleError(sunnyErr, "启动代理服务")
-		utils.Warn("按 Ctrl+C 退出...")
+		utils.LogError("启动代理核心失败: %v", sunnyErr)
+		utils.Warn("请检查程序是否已被防火墙拦截，按 Ctrl+C 退出...")
 		select {}
 	}
+	app.Sunny.SetGoCallback(GlobalHttpCallback, nil, nil, nil)
 
-	proxy_server := fmt.Sprintf("127.0.0.1:%v", app.Port)
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(&url.URL{
-				Scheme: "http",
-				Host:   proxy_server,
-			}),
-		},
-		Timeout: 5 * time.Second, // 设置超时防止阻塞
+	// 2. 立即渲染界面面板 (不再受网络连接阻塞)
+	utils.PrintSeparator()
+	color.Blue("📡 服务状态信息")
+	utils.PrintSeparator()
+	utils.PrintLabelValue("⏳", "服务状态", "已启动")
+	utils.PrintLabelValue("🔌", "代理端口", app.Port)
+	utils.PrintLabelValue("📱", "支持平台", "微信视频号")
+
+	proxyMode := "进程代理"
+	if os_env != "windows" {
+		proxyMode = "系统代理"
 	}
-	_, err3 := client.Get("https://sunny.io/")
-	if err3 == nil {
+	utils.LogSystemStart(app.Port, proxyMode)
+
+	// 3. 立即启动各类后台服务
+	go app.WSHub.Run()
+	utils.Info("✓ WebSocket Hub 已启动")
+
+	wsPort := app.Port + 1
+	go app.startWebSocketServer(wsPort)
+
+	app.CloudConnector = cloud.NewConnector(app.Cfg, app.WSHub)
+	app.CloudConnector.Start()
+
+	utils.Info("🔍 请打开需要下载的视频号页面进行下载")
+
+	// 4. 【异步】处理 Windows 进程注入和连通性检查 (不阻塞主线程)
+	go func() {
+		// 如果是 Windows，尝试启动注入引擎
 		if os_env == "windows" {
-			ok := app.Sunny.StartProcess()
-			if !ok {
-				color.Red("\nERROR 启动进程代理失败，检查是否以管理员身份运行\n")
-				color.Yellow("按 Ctrl+C 退出...\n")
-				select {}
-			}
 			app.Sunny.ProcessAddName("WeChatAppEx.exe")
+			if ok := app.Sunny.StartProcess(); ok {
+				utils.Info("✓ 视频号注入引擎已就绪 (WeChatAppEx.exe)")
+			} else {
+				utils.Warn("⚠️ 注入引擎启动失败：可能需要 [管理员权限] 才能在视频号内显示按钮")
+			}
 		}
 
-		utils.PrintSeparator()
-		color.Blue("📡 服务状态信息")
-		utils.PrintSeparator()
-		utils.PrintLabelValue("⏳", "服务状态", "已启动")
-		utils.PrintLabelValue("🔌", "代理端口", app.Port)
-		utils.PrintLabelValue("📱", "支持平台", "微信视频号")
-
-		proxyMode := "进程代理"
-		if os_env != "windows" {
-			proxyMode = "系统代理"
+		// 执行连通性自检
+		time.Sleep(1 * time.Second)
+		proxy_server := fmt.Sprintf("127.0.0.1:%v", app.Port)
+		client := &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(&url.URL{
+					Scheme: "http",
+					Host:   proxy_server,
+				}),
+			},
+			Timeout: 5 * time.Second,
 		}
-		utils.LogSystemStart(app.Port, proxyMode)
 
-		// Start WebSocket Hub (Now initialized earlier)
-		go app.WSHub.Run()
-		utils.Info("✓ WebSocket Hub 已启动")
+		if _, err := client.Get("https://sunny.io/"); err != nil {
+			utils.Warn("💡 注意：代理自检未通过 (但不影响远程管理和解析)")
+		} else {
+			utils.Info("✓ 证书与网络链路正常")
+		}
+	}()
 
-		wsPort := app.Port + 1
-		go app.startWebSocketServer(wsPort)
-
-		utils.Info("🔍 请打开需要下载的视频号页面进行下载")
-	} else {
-		utils.PrintSeparator()
-		utils.Warn("⚠️ 您还未安装证书，请在浏览器打开 http://%v 并根据说明安装证书", proxy_server)
-		utils.Warn("⚠️ 在安装完成后重新启动此程序即可")
-		utils.PrintSeparator()
-	}
 	utils.Info("💡 服务正在运行，按 Ctrl+C 退出...")
 
 	// 启动时检查更新 - 已移动到 Run 函数开头

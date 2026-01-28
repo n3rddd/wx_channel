@@ -14,6 +14,7 @@ import (
 
 	"wx_channel/internal/config"
 	"wx_channel/internal/database"
+	"wx_channel/internal/response"
 	"wx_channel/internal/utils"
 	"wx_channel/pkg/util"
 
@@ -141,7 +142,7 @@ func (h *APIHandler) HandleSavePageContent(Conn *SunnyNet.HttpConn) bool {
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
 	headers.Set("__debug", "fake_resp")
-	Conn.StopRequest(200, "{}", headers)
+	Conn.StopRequest(200, string(response.SuccessJSON(nil)), headers)
 	return true
 }
 
@@ -268,7 +269,7 @@ func (h *APIHandler) HandleProfile(Conn *SunnyNet.HttpConn) bool {
 			headers := http.Header{}
 			headers.Set("Content-Type", "application/json")
 			headers.Set("X-Content-Type-Options", "nosniff")
-			Conn.StopRequest(401, `{"success":false,"error":"unauthorized"}`, headers)
+			Conn.StopRequest(401, string(response.ErrorJSON(401, "unauthorized")), headers)
 			return true
 		}
 	}
@@ -286,7 +287,7 @@ func (h *APIHandler) HandleProfile(Conn *SunnyNet.HttpConn) bool {
 				headers := http.Header{}
 				headers.Set("Content-Type", "application/json")
 				headers.Set("X-Content-Type-Options", "nosniff")
-				Conn.StopRequest(403, `{"success":false,"error":"forbidden_origin"}`, headers)
+				Conn.StopRequest(403, string(response.ErrorJSON(403, "forbidden_origin")), headers)
 				return true
 			}
 		}
@@ -590,7 +591,7 @@ func (h *APIHandler) HandleTip(Conn *SunnyNet.HttpConn) bool {
 			headers := http.Header{}
 			headers.Set("Content-Type", "application/json")
 			headers.Set("X-Content-Type-Options", "nosniff")
-			Conn.StopRequest(401, `{"success":false,"error":"unauthorized"}`, headers)
+			Conn.StopRequest(401, string(response.ErrorJSON(401, "unauthorized")), headers)
 			return true
 		}
 	}
@@ -608,7 +609,7 @@ func (h *APIHandler) HandleTip(Conn *SunnyNet.HttpConn) bool {
 				headers := http.Header{}
 				headers.Set("Content-Type", "application/json")
 				headers.Set("X-Content-Type-Options", "nosniff")
-				Conn.StopRequest(403, `{"success":false,"error":"forbidden_origin"}`, headers)
+				Conn.StopRequest(403, string(response.ErrorJSON(403, "forbidden_origin")), headers)
 				return true
 			}
 		}
@@ -777,7 +778,7 @@ func (h *APIHandler) HandlePageURL(Conn *SunnyNet.HttpConn) bool {
 			headers := http.Header{}
 			headers.Set("Content-Type", "application/json")
 			headers.Set("X-Content-Type-Options", "nosniff")
-			Conn.StopRequest(401, `{"success":false,"error":"unauthorized"}`, headers)
+			Conn.StopRequest(401, string(response.ErrorJSON(401, "unauthorized")), headers)
 			return true
 		}
 	}
@@ -795,7 +796,7 @@ func (h *APIHandler) HandlePageURL(Conn *SunnyNet.HttpConn) bool {
 				headers := http.Header{}
 				headers.Set("Content-Type", "application/json")
 				headers.Set("X-Content-Type-Options", "nosniff")
-				Conn.StopRequest(403, `{"success":false,"error":"forbidden_origin"}`, headers)
+				Conn.StopRequest(403, string(response.ErrorJSON(403, "forbidden_origin")), headers)
 				return true
 			}
 		}

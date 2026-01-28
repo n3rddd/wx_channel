@@ -16,6 +16,7 @@ import (
 	"wx_channel/internal/config"
 	"wx_channel/internal/database"
 	"wx_channel/internal/services"
+	"wx_channel/internal/utils"
 	"wx_channel/internal/websocket"
 )
 
@@ -1082,6 +1083,8 @@ func (h *ConsoleAPIHandler) HandleAPIRequest(w http.ResponseWriter, r *http.Requ
 		h.HandleFilesAPI(w, r)
 	case path == "/api/video/stream":
 		h.HandleVideoStream(w, r)
+	case path == "/api/video/play":
+		h.HandleVideoPlay(w, r)
 	default:
 		h.sendError(w, r, http.StatusNotFound, "endpoint not found")
 	}
@@ -1398,5 +1401,124 @@ func (h *ConsoleAPIHandler) HandleVideoStream(w http.ResponseWriter, r *http.Req
 
 		// 复制整个文件
 		io.Copy(w, file)
+	}
+}
+
+// HandleVideoPlay 处理 GET /api/video/play - 远程视频流式播放（支持加密解密）
+// 参数:
+//   - url: 视频源 URL（必需）
+//   - key: 解密密钥，uint64 格式（可选，仅用于加密视频）
+func (h *ConsoleAPIHandler) HandleVideoPlay(w http.ResponseWriter, r *http.Request) {
+	// Handle CORS preflight
+	if h.HandleCORS(w, r) {
+		return
+	}
+
+	if r.Method != "GET" && r.Method != "HEAD" {
+		h.sendError(w, r, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// 从查询参数获取视频 URL
+	targetURL := r.URL.Query().Get("url")
+	if targetURL == "" {
+		h.sendError(w, r, http.StatusBadRequest, "url parameter is required")
+		return
+	}
+
+	// 获取可选的解密密钥
+	decryptKeyStr := r.URL.Query().Get("key")
+	var decryptKey uint64
+	var needsDecryption bool
+
+	if decryptKeyStr != "" {
+		var err error
+		decryptKey, err = strconv.ParseUint(decryptKeyStr, 10, 64)
+		if err != nil {
+			h.sendError(w, r, http.StatusBadRequest, "invalid decryption key")
+			return
+		}
+		needsDecryption = true
+	}
+
+	// 创建上游请求
+	upstreamReq, err := http.NewRequest(r.Method, targetURL, nil)
+	if err != nil {
+		h.sendError(w, r, http.StatusBadRequest, "invalid target URL")
+		return
+	}
+
+	// 复制 Range 头（支持视频拖动）
+	if rangeHeader := r.Header.Get("Range"); rangeHeader != "" {
+		upstreamReq.Header.Set("Range", rangeHeader)
+	}
+
+	// 发起上游请求
+	client := &http.Client{
+		Timeout: 0, // 不设置超时，支持长时间流式传输
+	}
+	upstreamResp, err := client.Do(upstreamReq)
+	if err != nil {
+		h.sendError(w, r, http.StatusBadGateway, "failed to fetch video: "+err.Error())
+		return
+	}
+	defer upstreamResp.Body.Close()
+
+	// 设置 CORS 头
+	h.setCORSHeaders(w, r)
+
+	// 复制上游响应头
+	for k, v := range upstreamResp.Header {
+		w.Header()[k] = v
+	}
+
+	// 确保设置 Accept-Ranges
+	if w.Header().Get("Accept-Ranges") == "" {
+		w.Header().Set("Accept-Ranges", "bytes")
+	}
+
+	// 如果需要解密
+	if needsDecryption {
+		// 解析 Content-Range 头以获取起始偏移
+		var startOffset uint64 = 0
+		if cr := upstreamResp.Header.Get("Content-Range"); cr != "" {
+			// Content-Range 格式: "bytes start-end/total"
+			parts := strings.Split(cr, " ")
+			if len(parts) == 2 {
+				rangePart := parts[1]
+				dashIdx := strings.Index(rangePart, "-")
+				if dashIdx > 0 {
+					if v, err := strconv.ParseUint(rangePart[:dashIdx], 10, 64); err == nil {
+						startOffset = v
+					}
+				}
+			}
+		}
+
+		// 创建解密读取器
+		// 加密区域大小为 131072 字节（128KB）
+		decryptReader := utils.NewDecryptReader(upstreamResp.Body, decryptKey, startOffset, 131072)
+
+		// 写入状态码
+		w.WriteHeader(upstreamResp.StatusCode)
+
+		// 如果是 HEAD 请求，不传输内容
+		if r.Method == "HEAD" {
+			return
+		}
+
+		// 流式复制解密后的数据到客户端
+		io.Copy(w, decryptReader)
+	} else {
+		// 无需解密，直接代理
+		w.WriteHeader(upstreamResp.StatusCode)
+
+		// 如果是 HEAD 请求，不传输内容
+		if r.Method == "HEAD" {
+			return
+		}
+
+		// 流式复制数据到客户端
+		io.Copy(w, upstreamResp.Body)
 	}
 }

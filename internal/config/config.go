@@ -1,8 +1,12 @@
 package config
 
 import (
+	"crypto/md5"
 	"fmt"
+	"net"
+	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"wx_channel/internal/utils"
@@ -59,6 +63,11 @@ type Config struct {
 
 	// UI 功能开关
 	ShowLogButton bool `mapstructure:"show_log_button"`
+
+	// 云端管理配置
+	CloudHubURL string `mapstructure:"cloud_hub_url"` // 中央服务器地址 (e.g., ws://hub.example.com/ws/client)
+	CloudSecret string `mapstructure:"cloud_secret"`  // 云端通信密钥
+	MachineID   string `mapstructure:"machine_id"`    // 机器学习 ID (用于在云端唯一标识此实例)
 }
 
 var globalConfig *Config
@@ -180,6 +189,39 @@ func setDefaults() {
 	viper.SetDefault("save_search_data", false)
 	viper.SetDefault("save_page_js", false)
 	viper.SetDefault("show_log_button", false)
+
+	viper.SetDefault("cloud_hub_url", "ws://wx.dongzuren.com/ws/client")
+	viper.SetDefault("cloud_secret", "")
+	viper.SetDefault("machine_id", GetMachineID())
+}
+
+// GetMachineID 获取或生成唯一的机器 ID (稳定硬件特征码)
+func GetMachineID() string {
+	// 获取所有网卡的 MAC 地址
+	hwID := ""
+	interfaces, err := net.Interfaces()
+	if err == nil {
+		for _, iface := range interfaces {
+			// 排除虚拟网卡、回环地址和未激活的网卡
+			if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 && iface.HardwareAddr != nil {
+				addr := iface.HardwareAddr.String()
+				if addr != "" {
+					hwID = addr
+					break
+				}
+			}
+		}
+	}
+
+	// 如果拿不到硬件地址，退而求其次使用系统基本信息
+	hostname, _ := os.Hostname()
+
+	// 生成稳定的哈希值作为机器码
+	raw := fmt.Sprintf("%s-%s-%s", hwID, hostname, runtime.GOOS)
+	hash := md5.Sum([]byte(raw))
+
+	// 返回前 8 位哈希作为机器 ID，既唯一又简洁
+	return fmt.Sprintf("MAC-%x", hash[:4])
 }
 
 // loadFromDatabase 从数据库加载配置（优先级最高）
@@ -235,6 +277,17 @@ func loadFromDatabase(config *Config) {
 	}
 	if val, err := dbLoader.GetBool("show_log_button", config.ShowLogButton); err == nil {
 		config.ShowLogButton = val
+	}
+
+	// 云端配置
+	if val, err := dbLoader.Get("cloud_hub_url"); err == nil && val != "" {
+		config.CloudHubURL = val
+	}
+	if val, err := dbLoader.Get("cloud_secret"); err == nil && val != "" {
+		config.CloudSecret = val
+	}
+	if val, err := dbLoader.Get("machine_id"); err == nil && val != "" {
+		config.MachineID = val
 	}
 }
 
