@@ -1,7 +1,7 @@
 <template>
   <div class="p-8">
     <!-- 添加新设备 -->
-    <div class="bg-bg shadow-neu rounded-2xl p-6 mb-8">
+    <div class="bg-white shadow-card rounded-2xl p-6 mb-8 border border-slate-100">
       <div class="flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
           <h2 class="text-xl font-bold text-slate-800 mb-2">添加新设备</h2>
@@ -28,7 +28,7 @@
 
     <!-- 统计卡片 -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div class="bg-bg shadow-neu rounded-2xl p-6">
+      <div class="bg-white shadow-card rounded-2xl p-6 border border-slate-100">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-slate-500 mb-1">总设备数</p>
@@ -40,7 +40,7 @@
         </div>
       </div>
 
-      <div class="bg-bg shadow-neu rounded-2xl p-6">
+      <div class="bg-white shadow-card rounded-2xl p-6 border border-slate-100">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-slate-500 mb-1">在线设备</p>
@@ -52,7 +52,7 @@
         </div>
       </div>
 
-      <div class="bg-bg shadow-neu rounded-2xl p-6">
+      <div class="bg-white shadow-card rounded-2xl p-6 border border-slate-100">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-slate-500 mb-1">离线设备</p>
@@ -66,7 +66,7 @@
     </div>
 
     <!-- 设备列表 -->
-    <div class="bg-bg shadow-neu rounded-2xl p-6">
+    <div class="bg-white shadow-card rounded-2xl p-6 border border-slate-100">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-bold text-slate-800">设备列表</h2>
         <button 
@@ -170,7 +170,7 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showConfirm = false"
     >
-      <div class="bg-bg shadow-neu rounded-2xl p-8 max-w-md w-full mx-4">
+      <div class="bg-white shadow-card rounded-2xl p-8 max-w-md w-full mx-4 border border-slate-100">
         <div class="flex items-center gap-4 mb-6">
           <div 
             class="w-12 h-12 rounded-xl flex items-center justify-center"
