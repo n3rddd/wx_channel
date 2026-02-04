@@ -15,7 +15,19 @@
              </div>
           </div>
       </div>
+      <div v-if="client" class="px-4 py-2 rounded-xl bg-bg shadow-neu-sm border border-white/50 text-primary font-medium flex items-center gap-2">
+        <span class="text-xs uppercase tracking-wider text-text-muted">Connected to</span>
+        <strong>{{ client.hostname }}</strong>
+      </div>
     </header>
+
+    <!-- Client Selector if none selected -->
+    <div v-if="!client" class="p-12 text-center bg-white rounded-[2rem] shadow-card mb-8">
+      <p class="text-text-muted mb-4">请先选择一个操作目标以播放视频</p>
+      <router-link to="/devices" class="inline-block px-6 py-3 rounded-full bg-bg shadow-neu-btn text-primary font-semibold hover:text-primary-dark transition-all active:shadow-neu-btn-active">
+          前往设备管理
+      </router-link>
+    </div>
 
     <div class="w-full">
         <!-- Loading State -->
@@ -101,11 +113,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useClientStore } from '../store/client'
 
 const router = useRouter()
 const route = useRoute()
+const clientStore = useClientStore()
+const client = computed(() => clientStore.currentClient)
 
 const subscription = ref(null)
 const videos = ref([])
@@ -164,42 +179,31 @@ const loadMoreVideos = () => {
 
 const playVideo = async (video) => {
   try {
+    // Check if client is connected
+    if (!client.value) {
+      alert('请先在设备管理页面选择一个在线设备')
+      router.push('/devices')
+      return
+    }
+    
     currentVideoTitle.value = video.title || '无标题'
     
     console.log('[PlayVideo] Video object:', video)
+    console.log('[PlayVideo] Using client:', client.value.id)
     
-    // Call feed_profile to get full video details with decrypt key (like UserProfile.vue)
-    const token = localStorage.getItem('token')
-    const profileRes = await fetch('/api/remoteCall', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        action: 'api_call',
-        data: {
-          key: 'key:channels:feed_profile',
-          body: {
-            object_id: video.object_id,
-            nonce_id: video.object_nonce_id
-          }
-        }
-      })
+    // Use clientStore.remoteCall to ensure client_id is passed
+    const profileData = await clientStore.remoteCall('api_call', {
+      key: 'key:channels:feed_profile',
+      body: {
+        object_id: video.object_id,
+        nonce_id: video.object_nonce_id
+      }
     })
     
-    const profileData = await profileRes.json()
     console.log('[PlayVideo] Profile response:', profileData)
     
-    // ResponsePayload structure: { request_id, success, data (json.RawMessage), error }
-    // The 'data' field is a JSON string that needs to be parsed
-    let actualVideo = {}
-    
-    if (!profileData.success) {
-      throw new Error(profileData.error || '获取视频信息失败')
-    }
-    
-    // Parse the data field (it's a JSON string from Go's json.RawMessage)
+    // clientStore.remoteCall already handles ResponsePayload and returns the data
+    // The data field might still be a JSON string from json.RawMessage
     let parsedData = profileData.data
     if (typeof parsedData === 'string') {
       try {
@@ -213,6 +217,7 @@ const playVideo = async (video) => {
     
     // Now extract the video object from the parsed data
     // Structure: { data: { object: {...} } } or { object: {...} }
+    let actualVideo = {}
     if (parsedData.data && parsedData.data.object) {
       actualVideo = parsedData.data.object
     } else if (parsedData.object) {
