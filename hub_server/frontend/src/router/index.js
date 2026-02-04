@@ -63,6 +63,12 @@ const router = createRouter({
             meta: { requiresAuth: true, layout: 'Sidebar' }
         },
         {
+            path: '/nodes/:id',
+            name: 'NodeDetail',
+            component: () => import('../views/NodeDetail.vue'),
+            meta: { requiresAuth: true, layout: 'Sidebar' }
+        },
+        {
             path: '/monitoring',
             name: 'Monitoring',
             component: () => import('../views/Monitoring.vue'),
