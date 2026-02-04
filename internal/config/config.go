@@ -222,31 +222,55 @@ func setDefaults() {
 
 // GetMachineID 获取或生成唯一的机器 ID (稳定硬件特征码)
 func GetMachineID() string {
-	// 获取所有网卡的 MAC 地址
-	hwID := ""
+	// 尝试从配置文件读取已保存的 machine_id
+	if viper.IsSet("machine_id") {
+		savedID := viper.GetString("machine_id")
+		if savedID != "" && savedID != "GetMachineID()" {
+			return savedID
+		}
+	}
+
+	// 获取所有物理网卡的 MAC 地址并排序
+	var macAddrs []string
 	interfaces, err := net.Interfaces()
 	if err == nil {
 		for _, iface := range interfaces {
 			// 排除虚拟网卡、回环地址和未激活的网卡
 			if iface.Flags&net.FlagLoopback == 0 && iface.Flags&net.FlagUp != 0 && iface.HardwareAddr != nil {
 				addr := iface.HardwareAddr.String()
-				if addr != "" {
-					hwID = addr
-					break
+				if addr != "" && addr != "00:00:00:00:00:00" {
+					macAddrs = append(macAddrs, addr)
 				}
 			}
 		}
 	}
 
-	// 如果拿不到硬件地址，退而求其次使用系统基本信息
+	// 排序 MAC 地址，确保稳定性
+	if len(macAddrs) > 0 {
+		// 简单排序，选择字典序最小的
+		minMAC := macAddrs[0]
+		for _, mac := range macAddrs {
+			if mac < minMAC {
+				minMAC = mac
+			}
+		}
+		
+		// 使用最小的 MAC 地址生成 ID
+		hostname, _ := os.Hostname()
+		raw := fmt.Sprintf("%s-%s-%s", minMAC, hostname, runtime.GOOS)
+		hash := md5.Sum([]byte(raw))
+		return fmt.Sprintf("MAC-%x", hash[:4])
+	}
+
+	// 如果拿不到硬件地址，使用主机名和操作系统
 	hostname, _ := os.Hostname()
-
-	// 生成稳定的哈希值作为机器码
-	raw := fmt.Sprintf("%s-%s-%s", hwID, hostname, runtime.GOOS)
+	if hostname == "" {
+		hostname = "unknown"
+	}
+	
+	raw := fmt.Sprintf("%s-%s", hostname, runtime.GOOS)
 	hash := md5.Sum([]byte(raw))
-
-	// 返回前 8 位哈希作为机器 ID，既唯一又简洁
-	return fmt.Sprintf("MAC-%x", hash[:4])
+	return fmt.Sprintf("HOST-%x", hash[:4])
 }
 
 // loadFromDatabase 从数据库加载配置（优先级最高）
