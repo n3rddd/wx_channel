@@ -374,10 +374,17 @@ const stripHtml = (html) => {
     return html.replace(/<[^>]+>/g, '')
 }
 
+// 确保 URL 使用 HTTPS 协议
+const ensureHttps = (url) => {
+    if (!url || url === placeholderImg) return url
+    return url.replace(/^http:\/\//i, 'https://')
+}
+
 // Helpers for template to cleaner access & robust fallbacks
 const getHeadUrl = (item) => {
     // User JSON: item.contact.headUrl
-    return item.headUrl || item.headImgUrl || item.contact?.headUrl || item.contact?.headImgUrl || placeholderImg
+    const url = item.headUrl || item.headImgUrl || item.contact?.headUrl || item.contact?.headImgUrl || placeholderImg
+    return ensureHttps(url)
 }
 
 const getNickname = (item) => {
@@ -391,7 +398,8 @@ const getSignature = (item) => {
 }
 
 const getVideoCover = (item) => {
-    return item.objectDesc?.media?.[0]?.coverUrl || item.objectDesc?.media?.[0]?.url || placeholderImg
+    const url = item.objectDesc?.media?.[0]?.coverUrl || item.objectDesc?.media?.[0]?.url || placeholderImg
+    return ensureHttps(url)
 }
 
 const getVideoTitle = (item) => {

@@ -38,7 +38,7 @@
                 
                 <!-- Cover -->
                 <div class="relative aspect-[9/16] w-full">
-                    <img :src="video.cover_url || placeholderImg" class="w-full h-full object-cover" @error="onImgError">
+                    <img :src="ensureHttps(video.cover_url) || placeholderImg" class="w-full h-full object-cover" @error="onImgError">
                     <!-- Play Icon Overlay -->
                     <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <div class="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
@@ -118,12 +118,18 @@ const playerUrl = ref('')
 const currentVideoTitle = ref('')
 const placeholderImg = 'https://via.placeholder.com/100'
 
+// 确保 URL 使用 HTTPS 协议
+const ensureHttps = (url) => {
+  if (!url || url === placeholderImg) return url
+  return url.replace(/^http:\/\//i, 'https://')
+}
+
 onMounted(() => {
   const subscriptionId = route.params.id
   subscription.value = {
     id: subscriptionId,
     nickname: route.query.nickname || '未知用户',
-    headUrl: route.query.headUrl || ''
+    headUrl: ensureHttps(route.query.headUrl || '')
   }
   loadVideos()
 })

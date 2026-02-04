@@ -95,6 +95,12 @@ const client = computed(() => clientStore.currentClient)
 
 const placeholderImg = 'https://via.placeholder.com/100'
 
+// 确保 URL 使用 HTTPS 协议
+const ensureHttps = (url) => {
+    if (!url || url === placeholderImg) return url
+    return url.replace(/^http:\/\//i, 'https://')
+}
+
 const author = ref({
     username: '',
     nickname: '',
@@ -121,7 +127,7 @@ onMounted(() => {
         author.value = {
             username: q.username,
             nickname: q.nickname || '未知用户',
-            headUrl: q.headUrl || '',
+            headUrl: ensureHttps(q.headUrl || ''),
             signature: q.signature || ''
         }
         fetchVideos(false)
@@ -203,7 +209,7 @@ const fetchVideos = async (loadMore = false) => {
             id: v.id || v.objectId || v.displayid,
             nonceId: v.nonceId || v.objectNonceId,
             title: desc.description,
-            coverUrl: v.coverUrl || media.thumbUrl,
+            coverUrl: ensureHttps(v.coverUrl || media.thumbUrl),
             createTime: v.createtime || v.createTime,
             width: media.width,
             height: media.height,
