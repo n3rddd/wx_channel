@@ -17,7 +17,7 @@
       </div>
     </header>
 
-    <div class="max-w-6xl mx-auto">
+    <div class="w-full">
         <!-- Loading State -->
         <div v-if="loading && videos.length === 0" class="flex justify-center p-12">
           <div class="text-text-muted">加载中...</div>

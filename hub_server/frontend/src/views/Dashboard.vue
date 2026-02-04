@@ -1,7 +1,7 @@
 <template>
   <div class="w-full min-h-screen bg-bg px-6 py-8 md:px-12 md:py-10">
     <!-- Page Header -->
-    <div class="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div class="w-full mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
       <button 
         class="group px-6 py-3 rounded-full bg-primary text-white font-bold text-sm tracking-wide shadow-neu-btn flex items-center gap-2 transition-all hover:scale-105 hover:shadow-lg active:scale-95" 
         @click="clientStore.fetchClients"
@@ -12,7 +12,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="max-w-7xl mx-auto">
+    <div class="w-full">
       
       <!-- Loading State -->
       <div v-if="clientStore.loading && !clientStore.clients.length" class="flex flex-col items-center justify-center py-40">

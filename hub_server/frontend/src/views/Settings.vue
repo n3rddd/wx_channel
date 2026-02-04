@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-4xl mx-auto space-y-8">
+  <div class="w-full space-y-8 p-8">
     <h1 class="text-3xl font-serif font-bold text-slate-800">设备管理</h1>
     
     <!-- Bind New Device -->
