@@ -21,6 +21,10 @@
       </router-link>
       
       <div class="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-6 font-sans">Management</div>
+      <router-link to="/devices" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
+        <component :is="Monitor" class="w-5 h-5" />
+        <span>设备管理</span>
+      </router-link>
       <router-link to="/tasks" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
         <component :is="ListTodo" class="w-5 h-5" />
         <span>任务追踪</span>
@@ -48,5 +52,5 @@
 </template>
 
 <script setup>
-import { LayoutDashboard, Globe, ListTodo, Activity, Settings } from 'lucide-vue-next'
+import { LayoutDashboard, Globe, ListTodo, Activity, Settings, Monitor } from 'lucide-vue-next'
 </script>

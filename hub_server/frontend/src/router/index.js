@@ -57,6 +57,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/devices',
+            name: 'Devices',
+            component: () => import('../views/Devices.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/settings',
             component: () => import('../views/Settings.vue'),
             meta: { layout: 'MainLayout', requiresAuth: true }
