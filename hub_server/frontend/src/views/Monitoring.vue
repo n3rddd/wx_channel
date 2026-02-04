@@ -1,12 +1,21 @@
 <template>
-  <div class="monitoring-container">
-    <header class="header">
-      <div class="header-actions">
-        <button @click="refreshData" class="btn-refresh" :disabled="loading">
-          <span class="icon">🔄</span>
+  <div class="w-full space-y-8 p-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div class="flex items-center gap-4">
+        <button 
+          @click="refreshData" 
+          :disabled="loading"
+          class="px-6 py-3 bg-primary text-white rounded-xl shadow-neu-btn hover:bg-primary-dark transition-all disabled:opacity-50 flex items-center gap-2"
+        >
+          <component :is="RefreshCw" class="w-5 h-5" :class="{ 'animate-spin': loading }" />
           {{ loading ? '刷新中...' : '刷新数据' }}
         </button>
-        <select v-model="timeRange" @change="refreshData" class="time-select">
+        <select 
+          v-model="timeRange" 
+          @change="refreshData" 
+          class="px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+        >
           <option value="5m">最近 5 分钟</option>
           <option value="15m">最近 15 分钟</option>
           <option value="1h">最近 1 小时</option>
@@ -14,129 +23,147 @@
           <option value="24h">最近 24 小时</option>
         </select>
       </div>
-    </header>
+    </div>
 
     <!-- 关键指标卡片 -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-icon">🔌</div>
-        <div class="metric-content">
-          <div class="metric-label">WebSocket 连接</div>
-          <div class="metric-value">{{ metrics.connections }}</div>
-          <div class="metric-trend" :class="getTrendClass(metrics.connectionsTrend)">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- WebSocket 连接 -->
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all">
+        <div>
+          <p class="text-slate-500 text-sm font-medium mb-1">WebSocket 连接</p>
+          <h3 class="text-3xl font-bold text-slate-800">{{ metrics.connections }}</h3>
+          <p class="text-sm font-medium mt-1" :class="getTrendClass(metrics.connectionsTrend)">
             {{ formatTrend(metrics.connectionsTrend) }}
-          </div>
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center">
+          <component :is="Plug" class="w-6 h-6" />
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-icon">📡</div>
-        <div class="metric-content">
-          <div class="metric-label">API 调用总数</div>
-          <div class="metric-value">{{ formatNumber(metrics.apiCalls) }}</div>
-          <div class="metric-trend" :class="getTrendClass(metrics.apiCallsTrend)">
+      <!-- API 调用总数 -->
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all">
+        <div>
+          <p class="text-slate-500 text-sm font-medium mb-1">API 调用总数</p>
+          <h3 class="text-3xl font-bold text-slate-800">{{ formatNumber(metrics.apiCalls) }}</h3>
+          <p class="text-sm font-medium mt-1" :class="getTrendClass(metrics.apiCallsTrend)">
             {{ formatTrend(metrics.apiCallsTrend) }}
-          </div>
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center">
+          <component :is="Radio" class="w-6 h-6" />
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-icon">✅</div>
-        <div class="metric-content">
-          <div class="metric-label">API 成功率</div>
-          <div class="metric-value">{{ metrics.successRate }}%</div>
-          <div class="metric-status" :class="getStatusClass(metrics.successRate)">
+      <!-- API 成功率 -->
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all">
+        <div>
+          <p class="text-slate-500 text-sm font-medium mb-1">API 成功率</p>
+          <h3 class="text-3xl font-bold text-slate-800">{{ metrics.successRate }}%</h3>
+          <p class="text-sm font-medium mt-1" :class="getStatusClass(metrics.successRate)">
             {{ getStatusText(metrics.successRate) }}
-          </div>
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-green-50 text-green-500 flex items-center justify-center">
+          <component :is="CheckCircle" class="w-6 h-6" />
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-icon">⚡</div>
-        <div class="metric-content">
-          <div class="metric-label">平均响应时间</div>
-          <div class="metric-value">{{ metrics.avgResponseTime }}ms</div>
-          <div class="metric-trend" :class="getTrendClass(-metrics.responseTimeTrend)">
+      <!-- 平均响应时间 -->
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all">
+        <div>
+          <p class="text-slate-500 text-sm font-medium mb-1">平均响应时间</p>
+          <h3 class="text-3xl font-bold text-slate-800">{{ metrics.avgResponseTime }}ms</h3>
+          <p class="text-sm font-medium mt-1" :class="getTrendClass(-metrics.responseTimeTrend)">
             {{ formatTrend(metrics.responseTimeTrend) }}
-          </div>
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center">
+          <component :is="Zap" class="w-6 h-6" />
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-icon">💓</div>
-        <div class="metric-content">
-          <div class="metric-label">心跳状态</div>
-          <div class="metric-value">{{ metrics.heartbeatsSent }}</div>
-          <div class="metric-status success">
+      <!-- 心跳状态 -->
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all">
+        <div>
+          <p class="text-slate-500 text-sm font-medium mb-1">心跳状态</p>
+          <h3 class="text-3xl font-bold text-slate-800">{{ metrics.heartbeatsSent }}</h3>
+          <p class="text-sm font-medium mt-1 text-green-600">
             失败: {{ metrics.heartbeatsFailed }}
-          </div>
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center">
+          <component :is="Heart" class="w-6 h-6" />
         </div>
       </div>
 
-      <div class="metric-card">
-        <div class="metric-icon">📦</div>
-        <div class="metric-content">
-          <div class="metric-label">压缩率</div>
-          <div class="metric-value">{{ metrics.compressionRate }}%</div>
-          <div class="metric-status success">
+      <!-- 压缩率 -->
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all">
+        <div>
+          <p class="text-slate-500 text-sm font-medium mb-1">压缩率</p>
+          <h3 class="text-3xl font-bold text-slate-800">{{ metrics.compressionRate.toFixed(2) }}%</h3>
+          <p class="text-sm font-medium mt-1 text-green-600">
             节省 {{ formatBytes(metrics.bytesSaved) }}
-          </div>
+          </p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+          <component :is="Package" class="w-6 h-6" />
         </div>
       </div>
     </div>
 
     <!-- 图表区域 -->
-    <div class="charts-section">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- 连接数趋势 -->
-      <div class="chart-card">
-        <h3 class="chart-title">WebSocket 连接数趋势</h3>
-        <div class="chart-container">
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 font-serif">WebSocket 连接数趋势</h3>
+        <div class="h-[300px] relative">
           <canvas ref="connectionsChart"></canvas>
         </div>
       </div>
 
       <!-- API 调用趋势 -->
-      <div class="chart-card">
-        <h3 class="chart-title">API 调用趋势</h3>
-        <div class="chart-container">
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 font-serif">API 调用趋势</h3>
+        <div class="h-[300px] relative">
           <canvas ref="apiCallsChart"></canvas>
         </div>
       </div>
 
       <!-- 响应时间分布 -->
-      <div class="chart-card">
-        <h3 class="chart-title">API 响应时间</h3>
-        <div class="chart-container">
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 font-serif">API 响应时间</h3>
+        <div class="h-[300px] relative">
           <canvas ref="responseTimeChart"></canvas>
         </div>
       </div>
 
       <!-- 负载均衡分布 -->
-      <div class="chart-card">
-        <h3 class="chart-title">负载均衡分布</h3>
-        <div class="chart-container">
+      <div class="bg-white rounded-3xl p-6 shadow-card border border-slate-100">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 font-serif">负载均衡分布</h3>
+        <div class="h-[300px] relative">
           <canvas ref="loadBalancerChart"></canvas>
         </div>
       </div>
     </div>
 
     <!-- 详细指标表格 -->
-    <div class="details-section">
-      <h3 class="section-title">详细指标</h3>
-      <div class="metrics-table">
-        <table>
+    <div class="bg-white rounded-3xl p-8 shadow-card border border-slate-100">
+      <h3 class="text-xl font-bold text-slate-800 mb-6 font-serif">详细指标</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
           <thead>
             <tr>
-              <th>指标名称</th>
-              <th>当前值</th>
-              <th>说明</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">指标名称</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">当前值</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">说明</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="metric in detailedMetrics" :key="metric.name">
-              <td>{{ metric.name }}</td>
-              <td class="value">{{ metric.value }}</td>
-              <td class="description">{{ metric.description }}</td>
+            <tr v-for="metric in detailedMetrics" :key="metric.name" class="group hover:bg-slate-50 transition-colors">
+              <td class="p-4 border-b border-slate-100 font-medium text-slate-700">{{ metric.name }}</td>
+              <td class="p-4 border-b border-slate-100 font-mono font-bold text-slate-800">{{ metric.value }}</td>
+              <td class="p-4 border-b border-slate-100 text-slate-400 text-sm">{{ metric.description }}</td>
             </tr>
           </tbody>
         </table>
@@ -147,6 +174,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RefreshCw, Plug, Radio, CheckCircle, Zap, Heart, Package } from 'lucide-vue-next'
 import Chart from 'chart.js/auto'
 
 const loading = ref(false)
@@ -421,15 +449,15 @@ function formatTrend(trend) {
 }
 
 function getTrendClass(trend) {
-  if (trend > 0) return 'trend-up'
-  if (trend < 0) return 'trend-down'
-  return 'trend-neutral'
+  if (trend > 0) return 'text-green-600'
+  if (trend < 0) return 'text-red-600'
+  return 'text-slate-500'
 }
 
 function getStatusClass(rate) {
-  if (rate >= 95) return 'success'
-  if (rate >= 90) return 'warning'
-  return 'danger'
+  if (rate >= 95) return 'text-green-600'
+  if (rate >= 90) return 'text-amber-600'
+  return 'text-red-600'
 }
 
 function getStatusText(rate) {
@@ -457,244 +485,3 @@ onUnmounted(() => {
   })
 })
 </script>
-
-<style scoped>
-.monitoring-container {
-  padding: 2rem;
-  width: 100%;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-refresh {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-refresh:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-}
-
-.btn-refresh:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.time-select {
-  padding: 0.75rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-/* 指标卡片网格 */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.metric-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  gap: 1rem;
-  transition: all 0.2s;
-}
-
-.metric-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
-.metric-icon {
-  font-size: 2.5rem;
-  line-height: 1;
-}
-
-.metric-content {
-  flex: 1;
-}
-
-.metric-label {
-  font-size: 0.875rem;
-  color: #64748b;
-  margin-bottom: 0.5rem;
-}
-
-.metric-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 0.25rem;
-}
-
-.metric-trend {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.trend-up {
-  color: #10b981;
-}
-
-.trend-down {
-  color: #ef4444;
-}
-
-.trend-neutral {
-  color: #64748b;
-}
-
-.metric-status {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.metric-status.success {
-  color: #10b981;
-}
-
-.metric-status.warning {
-  color: #f59e0b;
-}
-
-.metric-status.danger {
-  color: #ef4444;
-}
-
-/* 图表区域 */
-.charts-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.chart-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.chart-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 1rem;
-}
-
-.chart-container {
-  height: 300px;
-  position: relative;
-}
-
-/* 详细指标表格 */
-.details-section {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 1rem;
-}
-
-.metrics-table {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f8fafc;
-}
-
-th {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #475569;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-td {
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  color: #64748b;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-td.value {
-  font-weight: 600;
-  color: #1e293b;
-}
-
-td.description {
-  color: #94a3b8;
-}
-
-tbody tr:hover {
-  background: #f8fafc;
-}
-
-@media (max-width: 768px) {
-  .monitoring-container {
-    padding: 1rem;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .charts-section {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
