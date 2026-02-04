@@ -1,6 +1,7 @@
 <template>
-  <aside class="w-64 bg-bg flex flex-col shrink-0 h-full shadow-neu z-50">
-    <div class="px-6 py-8 flex items-center gap-3">
+  <aside class="w-64 bg-bg flex flex-col shrink-0 h-screen fixed left-0 top-0 shadow-neu z-50">
+    <!-- 顶部 Logo - 固定 -->
+    <div class="px-6 py-8 flex items-center gap-3 shrink-0">
       <div class="w-10 h-10 rounded-xl bg-bg shadow-neu-sm flex items-center justify-center text-primary">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
           <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
@@ -9,7 +10,8 @@
       <h2 class="font-serif text-xl font-bold text-slate-800 tracking-tight">Hub Control</h2>
     </div>
 
-    <nav class="flex-1 px-4 py-2 overflow-y-auto">
+    <!-- 中间导航 - 可滚动 -->
+    <nav class="flex-1 px-4 py-2 overflow-y-auto overflow-x-hidden">
       <div class="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-4 font-sans">Core</div>
       <router-link to="/dashboard" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
         <component :is="LayoutDashboard" class="w-5 h-5" />
@@ -49,9 +51,16 @@
         <component :is="Settings" class="w-5 h-5" />
         <span>系统设置</span>
       </router-link>
+      
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-6 font-sans">Admin</div>
+      <router-link to="/admin" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
+        <component :is="Shield" class="w-5 h-5" />
+        <span>系统管理</span>
+      </router-link>
     </nav>
 
-    <div class="p-6 border-t border-slate-200">
+    <!-- 底部状态 - 固定 -->
+    <div class="p-6 border-t border-slate-200 shrink-0">
       <div class="flex justify-between items-center bg-bg shadow-neu-pressed rounded-xl p-4">
         <span class="text-xs font-bold text-slate-400 uppercase">Status</span>
         <span class="text-green-500 font-bold text-xs flex items-center gap-1">
@@ -64,5 +73,5 @@
 </template>
 
 <script setup>
-import { LayoutDashboard, Globe, ListTodo, Activity, Settings, Monitor, Rss, User } from 'lucide-vue-next'
+import { LayoutDashboard, Globe, ListTodo, Activity, Settings, Monitor, Rss, User, Shield } from 'lucide-vue-next'
 </script>

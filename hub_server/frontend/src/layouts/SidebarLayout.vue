@@ -3,8 +3,8 @@
     <!-- 侧边栏 -->
     <Sidebar />
     
-    <!-- 主内容区域 -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- 主内容区域 - 添加左边距为侧边栏宽度 -->
+    <div class="flex-1 flex flex-col overflow-hidden ml-64">
       <!-- 顶部栏（可选，用于显示用户信息等） -->
       <header class="bg-bg shadow-neu-sm px-8 py-4 flex items-center justify-between">
         <div>
