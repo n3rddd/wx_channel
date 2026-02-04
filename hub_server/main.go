@@ -72,6 +72,9 @@ func main() {
 	router.HandleFunc("/api/admin/user/credits", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.UpdateUserCredits)))).Methods("POST")
 	router.HandleFunc("/api/admin/user/role", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.UpdateUserRole)))).Methods("POST")
 	router.HandleFunc("/api/admin/user/{id}", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.DeleteUser)))).Methods("DELETE")
+	router.HandleFunc("/api/admin/devices", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.GetAllDevices)))).Methods("GET")
+	router.HandleFunc("/api/admin/device/unbind", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.AdminUnbindDevice)))).Methods("POST")
+	router.HandleFunc("/api/admin/device/{id}", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.AdminDeleteDevice)))).Methods("DELETE")
 
 	// Public API (For now, keeping them public or applying OptionalAuth as needed)
 	router.HandleFunc("/api/clients", withRecovery(controllers.GetNodes))

@@ -50,7 +50,22 @@
     <!-- User Table -->
     <div class="bg-white rounded-3xl p-8 shadow-card border border-slate-100">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-slate-800">用户列表</h2>
+        <div class="flex gap-4">
+          <button
+            @click="activeTab = 'users'"
+            :class="activeTab === 'users' ? 'bg-primary text-white' : 'bg-bg text-slate-600'"
+            class="px-4 py-2 rounded-xl shadow-neu hover:shadow-neu-sm transition-all font-medium"
+          >
+            用户列表
+          </button>
+          <button
+            @click="activeTab = 'devices'"
+            :class="activeTab === 'devices' ? 'bg-primary text-white' : 'bg-bg text-slate-600'"
+            class="px-4 py-2 rounded-xl shadow-neu hover:shadow-neu-sm transition-all font-medium"
+          >
+            设备列表
+          </button>
+        </div>
         <button 
           @click="fetchData"
           class="px-4 py-2 bg-bg shadow-neu rounded-xl text-slate-600 hover:shadow-neu-sm transition-all flex items-center gap-2"
@@ -64,7 +79,8 @@
           加载中...
       </div>
 
-      <div v-else class="overflow-x-auto">
+      <!-- 用户列表 -->
+      <div v-else-if="activeTab === 'users'" class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
               <thead>
                   <tr>
@@ -116,6 +132,151 @@
                   </tr>
               </tbody>
           </table>
+      </div>
+
+      <!-- 设备列表 -->
+      <div v-else-if="activeTab === 'devices'" class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+              <thead>
+                  <tr>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">设备 ID</th>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">主机名</th>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">版本</th>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">状态</th>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">绑定用户</th>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">最后在线</th>
+                      <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">操作</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  <tr v-for="device in devices" :key="device.id" class="group hover:bg-slate-50 transition-colors">
+                      <td class="p-4 border-b border-slate-100 text-slate-500 font-mono text-xs">{{ device.id }}</td>
+                      <td class="p-4 border-b border-slate-100 font-medium text-slate-700">{{ device.hostname || 'N/A' }}</td>
+                      <td class="p-4 border-b border-slate-100 text-slate-600 text-sm">{{ device.version || 'N/A' }}</td>
+                      <td class="p-4 border-b border-slate-100">
+                          <span :class="device.status === 'online' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'" class="px-2 py-1 rounded-md text-xs font-bold uppercase">{{ device.status }}</span>
+                      </td>
+                      <td class="p-4 border-b border-slate-100 text-slate-600 text-sm">
+                          <span v-if="device.user_id > 0" class="font-medium">用户 #{{ device.user_id }}</span>
+                          <span v-else class="text-slate-400">未绑定</span>
+                      </td>
+                      <td class="p-4 border-b border-slate-100 text-slate-400 text-sm">{{ formatDate(device.last_seen) }}</td>
+                      <td class="p-4 border-b border-slate-100">
+                        <div class="flex gap-2">
+                          <button
+                            v-if="device.user_id > 0"
+                            @click="confirmUnbindDevice(device)"
+                            class="px-3 py-1 bg-bg shadow-neu rounded-lg text-orange-600 hover:shadow-neu-sm transition-all flex items-center gap-1 text-sm"
+                            title="解绑设备"
+                          >
+                            <component :is="Unlink" class="w-3 h-3" />
+                            解绑
+                          </button>
+                          <button
+                            @click="confirmDeleteDevice(device)"
+                            class="px-3 py-1 bg-bg shadow-neu rounded-lg text-red-600 hover:shadow-neu-sm transition-all flex items-center gap-1 text-sm"
+                            title="删除设备"
+                          >
+                            <component :is="Trash2" class="w-3 h-3" />
+                            删除
+                          </button>
+                        </div>
+                      </td>
+                  </tr>
+              </tbody>
+          </table>
+      </div>
+    </div>
+
+    <!-- 解绑设备确认对话框 -->
+    <div 
+      v-if="showUnbindDevice"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click.self="showUnbindDevice = false"
+    >
+      <div class="bg-white shadow-card rounded-2xl p-8 max-w-md w-full mx-4">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+            <component :is="Unlink" class="w-6 h-6 text-orange-600" />
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-800">解绑设备</h3>
+            <p class="text-sm text-slate-500">此操作将解除设备与用户的绑定</p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <p class="text-slate-700 mb-4">
+            确定要解绑设备 <span class="font-bold font-mono">{{ selectedDevice?.id }}</span> 吗？
+          </p>
+          <div class="bg-orange-50 rounded-xl p-4">
+            <p class="text-sm text-orange-600">
+              解绑后，设备将不再与用户 #{{ selectedDevice?.user_id }} 关联。
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button
+            @click="showUnbindDevice = false"
+            class="flex-1 px-4 py-3 bg-bg shadow-neu rounded-xl text-slate-600 hover:shadow-neu-sm transition-all"
+          >
+            取消
+          </button>
+          <button
+            @click="unbindDevice"
+            :disabled="actionLoading"
+            class="flex-1 px-4 py-3 rounded-xl bg-orange-600 text-white hover:bg-orange-700 transition-all"
+          >
+            {{ actionLoading ? '处理中...' : '确认解绑' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除设备确认对话框 -->
+    <div 
+      v-if="showDeleteDevice"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click.self="showDeleteDevice = false"
+    >
+      <div class="bg-white shadow-card rounded-2xl p-8 max-w-md w-full mx-4">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+            <component :is="Trash2" class="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-slate-800">删除设备</h3>
+            <p class="text-sm text-slate-500">此操作不可恢复</p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <p class="text-slate-700 mb-4">
+            确定要删除设备 <span class="font-bold font-mono">{{ selectedDevice?.id }}</span> 吗？
+          </p>
+          <div class="bg-red-50 rounded-xl p-4">
+            <p class="text-sm text-red-600">
+              ⚠️ 删除后，该设备的所有记录都将被永久删除。
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button
+            @click="showDeleteDevice = false"
+            class="flex-1 px-4 py-3 bg-bg shadow-neu rounded-xl text-slate-600 hover:shadow-neu-sm transition-all"
+          >
+            取消
+          </button>
+          <button
+            @click="deleteDevice"
+            :disabled="actionLoading"
+            class="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-all"
+          >
+            {{ actionLoading ? '删除中...' : '确认删除' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -271,18 +432,23 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
-import { Users, Monitor, Receipt, Coins, RefreshCw, Shield, Trash2 } from 'lucide-vue-next'
+import { Users, Monitor, Receipt, Coins, RefreshCw, Shield, Trash2, Unlink } from 'lucide-vue-next'
 
 const stats = ref({})
 const users = ref([])
+const devices = ref([])
 const loading = ref(true)
 const router = useRouter()
+const activeTab = ref('users')
 
 // 对话框状态
 const showEditCredits = ref(false)
 const showEditRole = ref(false)
 const showDeleteConfirm = ref(false)
+const showUnbindDevice = ref(false)
+const showDeleteDevice = ref(false)
 const selectedUser = ref(null)
+const selectedDevice = ref(null)
 const actionLoading = ref(false)
 
 // 表单数据
@@ -292,12 +458,23 @@ const newRole = ref('user')
 const fetchData = async () => {
     loading.value = true
     try {
-        const [statsRes, usersRes] = await Promise.all([
+        const requests = [
             axios.get('/api/admin/stats'),
             axios.get('/api/admin/users')
-        ])
-        stats.value = statsRes.data
-        users.value = usersRes.data.list
+        ]
+        
+        // 如果是设备标签页，也获取设备列表
+        if (activeTab.value === 'devices') {
+            requests.push(axios.get('/api/admin/devices'))
+        }
+        
+        const responses = await Promise.all(requests)
+        stats.value = responses[0].data
+        users.value = responses[1].data.list
+        
+        if (responses[2]) {
+            devices.value = responses[2].data || []
+        }
     } catch (err) {
         if (err.response && err.response.status === 403) {
             alert("需要管理员权限")
@@ -396,6 +573,58 @@ const deleteUser = async () => {
     } catch (error) {
         console.error('Delete user failed:', error)
         alert(error.response?.data || '删除用户失败')
+    } finally {
+        actionLoading.value = false
+    }
+}
+
+// 打开解绑设备确认对话框
+const confirmUnbindDevice = (device) => {
+    selectedDevice.value = device
+    showUnbindDevice.value = true
+}
+
+// 打开删除设备确认对话框
+const confirmDeleteDevice = (device) => {
+    selectedDevice.value = device
+    showDeleteDevice.value = true
+}
+
+// 解绑设备
+const unbindDevice = async () => {
+    if (!selectedDevice.value) return
+
+    actionLoading.value = true
+    try {
+        await axios.post('/api/admin/device/unbind', {
+            device_id: selectedDevice.value.id
+        })
+        
+        showUnbindDevice.value = false
+        await fetchData()
+        alert('设备解绑成功')
+    } catch (error) {
+        console.error('Unbind device failed:', error)
+        alert(error.response?.data || '解绑设备失败')
+    } finally {
+        actionLoading.value = false
+    }
+}
+
+// 删除设备
+const deleteDevice = async () => {
+    if (!selectedDevice.value) return
+
+    actionLoading.value = true
+    try {
+        await axios.delete(`/api/admin/device/${selectedDevice.value.id}`)
+        
+        showDeleteDevice.value = false
+        await fetchData()
+        alert('设备删除成功')
+    } catch (error) {
+        console.error('Delete device failed:', error)
+        alert(error.response?.data || '删除设备失败')
     } finally {
         actionLoading.value = false
     }

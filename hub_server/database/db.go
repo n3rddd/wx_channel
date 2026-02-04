@@ -249,3 +249,11 @@ func DeleteUser(userID uint) error {
 	// 提交事务
 	return tx.Commit().Error
 }
+
+
+// GetAllDevices returns all devices in the system
+func GetAllDevices() ([]models.Node, error) {
+	var nodes []models.Node
+	err := DB.Order("last_seen desc").Find(&nodes).Error
+	return nodes, err
+}

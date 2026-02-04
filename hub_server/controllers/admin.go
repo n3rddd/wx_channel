@@ -129,3 +129,68 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		"message": "User deleted successfully",
 	})
 }
+
+
+// GetAllDevices returns all devices in the system (admin only)
+func GetAllDevices(w http.ResponseWriter, r *http.Request) {
+	devices, err := database.GetAllDevices()
+	if err != nil {
+		http.Error(w, "Failed to fetch devices", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(devices)
+}
+
+// AdminUnbindDevice unbinds a device from its user (admin only)
+func AdminUnbindDevice(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		DeviceID string `json:"device_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.DeviceID == "" {
+		http.Error(w, "device_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// 解绑设备
+	if err := database.UnbindNode(req.DeviceID); err != nil {
+		http.Error(w, "Failed to unbind device", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Device unbound successfully",
+	})
+}
+
+// AdminDeleteDevice permanently deletes a device (admin only)
+func AdminDeleteDevice(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	deviceID := vars["id"]
+
+	if deviceID == "" {
+		http.Error(w, "device_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// 删除设备
+	if err := database.DeleteNode(deviceID); err != nil {
+		http.Error(w, "Failed to delete device", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Device deleted successfully",
+	})
+}
