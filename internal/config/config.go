@@ -66,10 +66,11 @@ type Config struct {
 	ShowLogButton bool `mapstructure:"show_log_button"`
 
 	// 云端管理配置
-	CloudHubURL string `mapstructure:"cloud_hub_url"` // 中央服务器地址 (e.g., ws://hub.example.com/ws/client)
-	CloudSecret string `mapstructure:"cloud_secret"`  // 云端通信密钥
-	MachineID   string `mapstructure:"machine_id"`    // 机器学习 ID (用于在云端唯一标识此实例)
-	BindToken   string `mapstructure:"bind_token"`    // 临时绑定码
+	CloudEnabled bool   `mapstructure:"cloud_enabled"`   // 是否启用云端管理功能
+	CloudHubURL  string `mapstructure:"cloud_hub_url"`   // 中央服务器地址 (e.g., ws://hub.example.com/ws/client)
+	CloudSecret  string `mapstructure:"cloud_secret"`    // 云端通信密钥
+	MachineID    string `mapstructure:"machine_id"`      // 机器学习 ID (用于在云端唯一标识此实例)
+	BindToken    string `mapstructure:"bind_token"`      // 临时绑定码
 
 	// 第二阶段优化配置
 	LoadBalancerStrategy string `mapstructure:"load_balancer_strategy"` // 负载均衡策略: roundrobin, leastconn, weighted, random
@@ -209,7 +210,8 @@ func setDefaults() {
 	viper.SetDefault("save_page_js", false)
 	viper.SetDefault("show_log_button", false)
 
-	viper.SetDefault("cloud_hub_url", "ws://wx.dongzuren.com/ws/client")
+	viper.SetDefault("cloud_enabled", true) // 默认启用云端管理
+	viper.SetDefault("cloud_hub_url", "ws://wx.dujulaoren.com/ws/client")
 	viper.SetDefault("cloud_secret", "")
 	viper.SetDefault("machine_id", GetMachineID())
 
@@ -231,11 +233,16 @@ func GetMachineID() string {
 		}
 	}
 
-	// 2. 生成新的 machine_id
-	newID := generateHardwareID()
+	// 2. 使用增强型设备 ID 生成
+	deviceID, fp, err := LoadOrGenerateDeviceID()
+	if err != nil {
+		// 降级到旧方法
+		fmt.Printf("Warning: Failed to generate enhanced device ID: %v, using legacy method\n", err)
+		deviceID = generateHardwareIDLegacy()
+	}
 
 	// 3. 保存到 viper 配置（内存中）
-	viper.Set("machine_id", newID)
+	viper.Set("machine_id", deviceID)
 
 	// 4. 手动更新配置文件，只添加/更新 machine_id 字段
 	configFile := viper.ConfigFileUsed()
@@ -264,14 +271,21 @@ machine_id: %s
 
 # === 性能配置（可选）===
 download_concurrency: 5       # 下载并发数，可根据网络情况调整
-`, newID)
+`, deviceID)
 
 		if err := os.WriteFile(configFile, []byte(simpleConfig), 0644); err != nil {
 			fmt.Printf("Warning: Failed to create config file: %v\n", err)
 		} else {
-			fmt.Printf("Created simplified config file with device ID: %s\n", configFile)
+			fmt.Printf("Created config file with enhanced device ID: %s\n", configFile)
+			if fp != nil {
+				fmt.Printf("Hardware fingerprint: %d MAC(s), CPU: %v, MB: %v, Disk: %v\n",
+					len(fp.MACAddresses),
+					fp.CPUInfo != "",
+					fp.MotherboardID != "",
+					fp.DiskSerial != "")
+			}
 		}
-		return newID
+		return deviceID
 	}
 
 	// 配置文件已存在，检查是否已有 machine_id
@@ -280,7 +294,7 @@ download_concurrency: 5       # 下载并发数，可根据网络情况调整
 	for i, line := range lines {
 		if strings.HasPrefix(strings.TrimSpace(line), "machine_id:") {
 			// 更新现有的 machine_id
-			lines[i] = fmt.Sprintf("machine_id: %s", newID)
+			lines[i] = fmt.Sprintf("machine_id: %s", deviceID)
 			machineIDExists = true
 			break
 		}
@@ -301,7 +315,7 @@ download_concurrency: 5       # 下载并发数，可根据网络情况调整
 			// 如果找不到 cloud_secret，添加到文件末尾
 			lines = append(lines, "", "# === 设备标识 ===")
 			lines = append(lines, "# 自动生成，用于在云端唯一标识此设备，请勿手动修改")
-			lines = append(lines, fmt.Sprintf("machine_id: %s", newID))
+			lines = append(lines, fmt.Sprintf("machine_id: %s", deviceID))
 		} else {
 			// 在 cloud_secret 之后插入
 			newLines := make([]string, 0, len(lines)+3)
@@ -309,7 +323,7 @@ download_concurrency: 5       # 下载并发数，可根据网络情况调整
 			newLines = append(newLines, "")
 			newLines = append(newLines, "# === 设备标识 ===")
 			newLines = append(newLines, "# 自动生成，用于在云端唯一标识此设备，请勿手动修改")
-			newLines = append(newLines, fmt.Sprintf("machine_id: %s", newID))
+			newLines = append(newLines, fmt.Sprintf("machine_id: %s", deviceID))
 			newLines = append(newLines, lines[insertIndex:]...)
 			lines = newLines
 		}
@@ -320,14 +334,14 @@ download_concurrency: 5       # 下载并发数，可根据网络情况调整
 	if err := os.WriteFile(configFile, []byte(updatedContent), 0644); err != nil {
 		fmt.Printf("Warning: Failed to update config file: %v\n", err)
 	} else {
-		fmt.Printf("Device ID persisted to config file: %s\n", configFile)
+		fmt.Printf("Enhanced device ID persisted: %s\n", deviceID)
 	}
 
-	return newID
+	return deviceID
 }
 
-// generateHardwareID 生成基于硬件的唯一ID
-func generateHardwareID() string {
+// generateHardwareIDLegacy 生成基于硬件的唯一ID（旧方法，用于降级）
+func generateHardwareIDLegacy() string {
 	// 改进：获取所有网卡，不管是否激活，然后排序
 	var macAddrs []string
 	interfaces, err := net.Interfaces()
@@ -428,6 +442,9 @@ func loadFromDatabase(config *Config) {
 	}
 
 	// 云端配置
+	if val, err := dbLoader.GetBool("cloud_enabled", config.CloudEnabled); err == nil {
+		config.CloudEnabled = val
+	}
 	if val, err := dbLoader.Get("cloud_hub_url"); err == nil && val != "" {
 		config.CloudHubURL = val
 	}

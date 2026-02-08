@@ -4,16 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // 允许所有来源
-	},
-}
 
 // Handler WebSocket HTTP 处理器
 type Handler struct {
@@ -27,14 +19,25 @@ func NewHandler(hub *Hub) *Handler {
 
 // ServeHTTP 处理 WebSocket 连接请求
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		InsecureSkipVerify: true, // 允许所有来源
+		CompressionMode:    websocket.CompressionContextTakeover,
+	})
 	if err != nil {
 		fmt.Printf("[WebSocket] 连接升级失败: %v\n", err)
 		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
 		return
 	}
 
-	client := NewClient(conn, h.hub)
+	// 获取远程地址
+	remoteAddr := r.RemoteAddr
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		remoteAddr = realIP
+	} else if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		remoteAddr = forwarded
+	}
+
+	client := NewClientWithAddr(conn, h.hub, remoteAddr)
 	h.hub.RegisterClient(client)
 
 	// 启动读写协程

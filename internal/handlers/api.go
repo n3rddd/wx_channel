@@ -115,6 +115,17 @@ func (h *APIHandler) HandleSavePageContent(Conn *SunnyNet.HttpConn) bool {
 		return false
 	}
 
+	// 提前检查配置，如果功能未启用则直接返回成功，避免不必要的处理
+	cfg := h.getConfig()
+	if cfg == nil || !cfg.SavePageSnapshot {
+		// 功能未启用，直接返回成功，不做任何处理
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/json")
+		headers.Set("__debug", "fake_resp")
+		Conn.StopRequest(200, `{"code":0,"message":"页面快照功能未启用"}`, headers)
+		return true
+	}
+
 	var contentData struct {
 		URL       string `json:"url"`
 		HTML      string `json:"html"`
@@ -128,17 +139,42 @@ func (h *APIHandler) HandleSavePageContent(Conn *SunnyNet.HttpConn) bool {
 	if err := Conn.Request.Body.Close(); err != nil {
 		utils.HandleError(err, "关闭请求体")
 	}
+	
+	// 检查请求体是否为空
+	if len(body) == 0 {
+		utils.Warn("save_page_content 请求体为空")
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/json")
+		headers.Set("__debug", "fake_resp")
+		Conn.StopRequest(400, `{"code":-1,"message":"请求体为空"}`, headers)
+		return true
+	}
+	
+	// 记录请求体大小（用于调试）
+	utils.LogInfo("save_page_content 请求体大小: %d 字节", len(body))
+	
 	err = json.Unmarshal(body, &contentData)
 	if err != nil {
+		// 记录更详细的错误信息
+		utils.LogError("解析页面内容数据失败: %v, 请求体前100字节: %s", err, string(body[:min(100, len(body))]))
 		utils.HandleError(err, "解析页面内容数据")
-	} else {
-		parsedURL, err := url.Parse(contentData.URL)
-		if err != nil {
-			utils.HandleError(err, "解析页面内容URL")
-		} else {
-			h.saveDynamicHTML(contentData.HTML, parsedURL, contentData.URL, contentData.Timestamp)
-		}
+		
+		// 返回错误响应
+		headers := http.Header{}
+		headers.Set("Content-Type", "application/json")
+		headers.Set("__debug", "fake_resp")
+		Conn.StopRequest(400, fmt.Sprintf(`{"code":-1,"message":"JSON解析失败: %s"}`, err.Error()), headers)
+		return true
 	}
+	
+	// 解析成功，保存页面内容
+	parsedURL, err := url.Parse(contentData.URL)
+	if err != nil {
+		utils.HandleError(err, "解析页面内容URL")
+	} else {
+		h.saveDynamicHTML(contentData.HTML, parsedURL, contentData.URL, contentData.Timestamp)
+	}
+	
 	headers := http.Header{}
 	headers.Set("Content-Type", "application/json")
 	headers.Set("__debug", "fake_resp")

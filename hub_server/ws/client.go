@@ -3,6 +3,7 @@ package ws
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"wx_channel/hub_server/models"
 	"wx_channel/hub_server/services"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 )
 
 type Client struct {
@@ -25,43 +26,84 @@ type Client struct {
 	LastSeen time.Time
 	Conn     *websocket.Conn
 	mu       sync.Mutex
+	ctx      context.Context
+	cancel   context.CancelFunc
 
 	respChannels map[string]chan ResponsePayload
 	respMu       sync.RWMutex
 	Hub          *Hub
+
+	// 连接统计
+	stats ConnectionStats
+}
+
+// ConnectionStats 连接统计信息
+type ConnectionStats struct {
+	ConnectedAt   time.Time
+	PingCount     int64
+	PongCount     int64
+	LastPingTime  time.Time
+	LastPongTime  time.Time
+	AvgLatency    time.Duration
+	FailureCount  int
+	MessagesSent  int64
+	MessagesRecv  int64
 }
 
 func NewClient(id string, conn *websocket.Conn, hub *Hub, ip string) *Client {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Client{
 		ID:           id,
 		IP:           ip,
 		LastSeen:     time.Now(),
 		Conn:         conn,
+		ctx:          ctx,
+		cancel:       cancel,
 		respChannels: make(map[string]chan ResponsePayload),
 		Hub:          hub,
+		stats: ConnectionStats{
+			ConnectedAt: time.Now(),
+		},
 	}
 }
 
 func (c *Client) ReadPump() {
 	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ReadPump panic 恢复: ClientID=%s, Error=%v", c.ID, r)
+		}
 		c.Hub.Unregister <- c
-		c.Conn.Close()
+		c.Close()
 	}()
 
 	// 设置最大消息大小为 10MB
 	c.Conn.SetReadLimit(10 * 1024 * 1024)
 
+	// 启动 ping 循环
+	go c.pingLoop()
+
 	for {
-		messageType, message, err := c.Conn.ReadMessage()
+		// 使用 context 控制读取超时
+		ctx, cancel := context.WithTimeout(c.ctx, 90*time.Second)
+		messageType, message, err := c.Conn.Read(ctx)
+		cancel()
+
 		if err != nil {
+			// 检查是否是正常关闭
+			status := websocket.CloseStatus(err)
+			if status == websocket.StatusNormalClosure || status == websocket.StatusGoingAway {
+				log.Printf("WebSocket 正常关闭: ClientID=%s", c.ID)
+			} else {
+				log.Printf("WebSocket 异常关闭: ClientID=%s, Error=%v, Status=%d", c.ID, err, status)
+			}
 			break
 		}
 
 		// 如果是二进制消息，说明是压缩数据，先解压
-		if messageType == websocket.BinaryMessage {
+		if messageType == websocket.MessageBinary {
 			decompressed, err := c.decompressData(message)
 			if err != nil {
-				log.Printf("解压失败: %v", err)
+				log.Printf("解压失败: ClientID=%s, Error=%v", c.ID, err)
 				continue
 			}
 			message = decompressed
@@ -69,10 +111,24 @@ func (c *Client) ReadPump() {
 
 		var msg CloudMessage
 		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Printf("消息解析失败: ClientID=%s, Error=%v", c.ID, err)
 			continue
 		}
 
-		c.handleMessage(msg)
+		// 更新统计
+		c.mu.Lock()
+		c.stats.MessagesRecv++
+		c.mu.Unlock()
+
+		// 使用 goroutine 处理消息，添加 panic 恢复
+		go func(m CloudMessage) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("消息处理 panic: ClientID=%s, MessageType=%s, Error=%v", c.ID, m.Type, r)
+				}
+			}()
+			c.handleMessage(m)
+		}(msg)
 	}
 }
 
@@ -93,12 +149,13 @@ func (c *Client) handleMessage(msg CloudMessage) {
 
 		// 更新数据库
 		database.UpsertNode(&models.Node{
-			ID:       c.ID,
-			Hostname: p.Hostname,
-			Version:  p.Version,
-			IP:       c.IP,
-			Status:   "online",
-			LastSeen: now,
+			ID:                  c.ID,
+			Hostname:            p.Hostname,
+			Version:             p.Version,
+			IP:                  c.IP,
+			Status:              "online",
+			LastSeen:            now,
+			HardwareFingerprint: p.HardwareFingerprint,
 		})
 		
 		// 发送心跳响应（Pong）
@@ -115,7 +172,7 @@ func (c *Client) handleMessage(msg CloudMessage) {
 	case MsgTypeResponse:
 		var resp ResponsePayload
 		if err := json.Unmarshal(msg.Payload, &resp); err != nil {
-			log.Printf("解析响应失败: %v", err)
+			log.Printf("解析响应失败: ClientID=%s, Error=%v", c.ID, err)
 			return
 		}
 		
@@ -124,11 +181,15 @@ func (c *Client) handleMessage(msg CloudMessage) {
 		c.respMu.RUnlock()
 		
 		if ok {
+			// 使用 select 防止阻塞
 			select {
 			case ch <- resp:
-			default:
-				log.Printf("响应通道已满: RequestID=%s", resp.RequestID)
+				// 响应已发送
+			case <-time.After(5 * time.Second):
+				log.Printf("响应通道发送超时: ClientID=%s, RequestID=%s", c.ID, resp.RequestID)
 			}
+		} else {
+			log.Printf("未找到响应通道: ClientID=%s, RequestID=%s (可能已超时)", c.ID, resp.RequestID)
 		}
 
 	case MsgTypeBind:
@@ -166,7 +227,15 @@ func (c *Client) decompressData(data []byte) ([]byte, error) {
 func (c *Client) WriteMessage(msg []byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.Conn.WriteMessage(websocket.TextMessage, msg)
+	
+	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+	defer cancel()
+	
+	err := c.Conn.Write(ctx, websocket.MessageText, msg)
+	if err == nil {
+		c.stats.MessagesSent++
+	}
+	return err
 }
 
 // sendHeartbeatResponse 发送心跳响应
@@ -186,5 +255,88 @@ func (c *Client) sendHeartbeatResponse(requestID string) {
 	
 	if err := c.WriteMessage(respBytes); err != nil {
 		log.Printf("发送心跳响应失败: %v", err)
+	}
+}
+
+// GetStats 获取连接统计信息
+func (c *Client) GetStats() ConnectionStats {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.stats
+}
+
+// Close 关闭连接
+func (c *Client) Close() {
+	c.cancel()
+	c.Conn.Close(websocket.StatusNormalClosure, "")
+	
+	// 记录连接统计
+	stats := c.GetStats()
+	uptime := time.Since(stats.ConnectedAt)
+	log.Printf("连接关闭统计: ClientID=%s, Uptime=%v, Ping=%d, Pong=%d, AvgLatency=%v, Sent=%d, Recv=%d",
+		c.ID, uptime, stats.PingCount, stats.PongCount, stats.AvgLatency, stats.MessagesSent, stats.MessagesRecv)
+}
+
+// pingLoop 定期发送 ping 保持连接活跃
+func (c *Client) pingLoop() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			start := time.Now()
+			
+			// 检查连接是否已关闭
+			c.mu.Lock()
+			if c.ctx.Err() != nil {
+				c.mu.Unlock()
+				return
+			}
+			c.mu.Unlock()
+			
+			ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+			err := c.Conn.Ping(ctx)
+			cancel()
+			
+			latency := time.Since(start)
+			
+			c.mu.Lock()
+			c.stats.PingCount++
+			c.stats.LastPingTime = start
+			
+			if err != nil {
+				c.stats.FailureCount++
+				failureCount := c.stats.FailureCount
+				c.mu.Unlock()
+				
+				log.Printf("Ping 失败: ClientID=%s, Error=%v, 连续失败=%d", c.ID, err, failureCount)
+				
+				// Ping 失败，触发连接清理
+				log.Printf("Ping 失败，触发连接清理: ClientID=%s", c.ID)
+				c.Hub.Unregister <- c
+				return
+			}
+			
+			// Ping 成功
+			c.stats.PongCount++
+			c.stats.LastPongTime = time.Now()
+			c.stats.FailureCount = 0
+			
+			// 计算平均延迟（指数移动平均）
+			if c.stats.AvgLatency == 0 {
+				c.stats.AvgLatency = latency
+			} else {
+				c.stats.AvgLatency = (c.stats.AvgLatency*9 + latency) / 10
+			}
+			c.mu.Unlock()
+			
+			// 如果延迟过高，记录警告
+			if latency > 5*time.Second {
+				log.Printf("Ping 延迟过高: ClientID=%s, Latency=%v", c.ID, latency)
+			}
+		}
 	}
 }

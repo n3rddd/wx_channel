@@ -276,11 +276,11 @@ const openDetail = async (item) => {
     if (searchType.value === 1) {
         // User Profile
         router.push({
-            path: '/profile',
+            path: '/channel/' + (item.username || item.contact?.username),
             query: {
                 username: item.username || item.contact?.username, 
                 nickname: getNickname(item),
-                headUrl: getHeadUrl(item), // Pass the resolved URL
+                headUrl: getHeadUrl(item),
                 signature: stripHtml(item.signature || item.contact?.signature || '')
             }
         })

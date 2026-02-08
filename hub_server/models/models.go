@@ -33,6 +33,13 @@ type Node struct {
 	UserID     uint `json:"user_id" gorm:"index"`
 	BindStatus bool `json:"bind_status" gorm:"default:false"`
 
+	// Device Management (Phase 2)
+	DisplayName        string    `json:"display_name" gorm:"default:''"`                  // 用户自定义设备名称
+	HardwareFingerprint string   `json:"hardware_fingerprint,omitempty" gorm:"type:text"` // 硬件指纹 JSON
+	FirstSeen          time.Time `json:"first_seen"`                                      // 首次连接时间
+	IsLocked           bool      `json:"is_locked" gorm:"default:false"`                  // 是否锁定（防止转移）
+	DeviceGroup        string    `json:"device_group" gorm:"default:''"`                  // 设备分组
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -34,8 +34,14 @@ const router = createRouter({
         },
         {
             path: '/profile',
-            name: 'UserProfile',
-            component: () => import('../views/UserProfile.vue'),
+            name: 'Profile',
+            component: () => import('../views/Profile.vue'),
+            meta: { requiresAuth: true, layout: 'Sidebar' }
+        },
+        {
+            path: '/channel/:username',
+            name: 'ChannelProfile',
+            component: () => import('../views/ChannelProfile.vue'),
             meta: { requiresAuth: true, layout: 'Sidebar' }
         },
         {
@@ -72,10 +78,15 @@ const router = createRouter({
             path: '/monitoring',
             name: 'Monitoring',
             component: () => import('../views/Monitoring.vue'),
-            meta: { requiresAuth: true, layout: 'Sidebar' }
+            meta: { 
+                requiresAuth: true, 
+                requiresAdmin: true,  // 添加管理员权限要求
+                layout: 'Sidebar' 
+            }
         },
         {
             path: '/admin',
+            name: 'Admin',
             component: () => import('../views/Admin.vue'),
             meta: {
                 requiresAuth: true,

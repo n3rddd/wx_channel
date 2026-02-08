@@ -9,10 +9,66 @@ window.__wx_api_client = {
   reconnectTimer: null,
   reconnectDelay: 3000,
   requests: {},
+  heartbeatTimer: null,
+  lastHeartbeatTime: 0,
+  missedHeartbeats: 0,
 
   // 初始化
   init: function () {
     this.connect();
+    this.setupVisibilityHandler();
+    this.setupBeforeUnloadHandler();
+  },
+
+  // 设置页面可见性监听
+  setupVisibilityHandler: function () {
+    var self = this;
+    
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) {
+        // 页面变为可见
+        console.log('[API客户端] 📱 页面激活，检查连接状态...');
+        
+        if (!self.connected) {
+          console.log('[API客户端] 连接已断开，立即重连...');
+          // 清除现有的重连定时器
+          if (self.reconnectTimer) {
+            clearTimeout(self.reconnectTimer);
+            self.reconnectTimer = null;
+          }
+          // 立即重连
+          self.connect();
+        } else {
+          // 连接还在，发送一个心跳测试
+          self.sendHeartbeat();
+        }
+      } else {
+        // 页面变为隐藏
+        console.log('[API客户端] 📴 页面进入后台');
+      }
+    });
+    
+    console.log('[API客户端] ✅ 页面可见性监听已启动');
+  },
+
+  // 设置页面关闭前的处理
+  setupBeforeUnloadHandler: function () {
+    var self = this;
+    
+    window.addEventListener('beforeunload', function () {
+      // 页面即将关闭，清理资源
+      if (self.ws && self.connected) {
+        self.ws.close(1000, 'Page unloading');
+      }
+      
+      if (self.heartbeatTimer) {
+        clearInterval(self.heartbeatTimer);
+      }
+      
+      if (self.reconnectTimer) {
+        clearTimeout(self.reconnectTimer);
+      }
+    });
   },
 
   // 连接 WebSocket
@@ -91,6 +147,9 @@ window.__wx_api_client = {
           clearTimeout(self.reconnectTimer);
           self.reconnectTimer = null;
         }
+
+        // 启动心跳
+        self.startHeartbeat();
       };
 
       this.ws.onmessage = function (event) {
@@ -114,6 +173,9 @@ window.__wx_api_client = {
       this.ws.onclose = function (event) {
         clearTimeout(connectTimeout);
         console.log('[API客户端] 🔌 连接关闭:', event.code, event.reason);
+
+        // 停止心跳
+        self.stopHeartbeat();
 
         if (self.connected) {
           // 之前连接成功过，现在断开了，需要重连
@@ -329,6 +391,80 @@ window.__wx_api_client = {
       this.ws.send(msgStr);
     } catch (err) {
       console.error('[API客户端] 发送响应失败:', err);
+    }
+  },
+
+  // 启动心跳
+  startHeartbeat: function () {
+    var self = this;
+    
+    // 清除旧的心跳定时器
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+    }
+    
+    // 重置心跳计数
+    this.missedHeartbeats = 0;
+    this.lastHeartbeatTime = Date.now();
+    
+    // 每 30 秒发送一次心跳
+    this.heartbeatTimer = setInterval(function () {
+      self.sendHeartbeat();
+    }, 30000);
+    
+    console.log('[API客户端] ✅ 心跳已启动 (30秒间隔)');
+  },
+
+  // 停止心跳
+  stopHeartbeat: function () {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+      console.log('[API客户端] ⏹️ 心跳已停止');
+    }
+  },
+
+  // 发送心跳
+  sendHeartbeat: function () {
+    if (!this.connected || !this.ws) {
+      console.warn('[API客户端] 无法发送心跳：未连接');
+      this.missedHeartbeats++;
+      
+      // 连续 3 次心跳失败，触发重连
+      if (this.missedHeartbeats >= 3) {
+        console.error('[API客户端] 心跳连续失败，触发重连...');
+        this.stopHeartbeat();
+        
+        // 关闭当前连接
+        if (this.ws) {
+          try {
+            this.ws.close();
+          } catch (e) {
+            // ignore
+          }
+        }
+        
+        // 立即重连
+        this.connected = false;
+        this.connect();
+      }
+      return;
+    }
+    
+    try {
+      var heartbeat = {
+        type: 'ping',
+        timestamp: Date.now()
+      };
+      
+      this.ws.send(JSON.stringify(heartbeat));
+      this.lastHeartbeatTime = Date.now();
+      this.missedHeartbeats = 0;
+      
+      console.log('[API客户端] 💓 心跳已发送');
+    } catch (err) {
+      console.error('[API客户端] 发送心跳失败:', err);
+      this.missedHeartbeats++;
     }
   }
 };

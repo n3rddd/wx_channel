@@ -6,12 +6,18 @@
             ←
           </button>
           <div class="flex items-center gap-4 flex-1" v-if="author">
-             <div class="w-16 h-16 rounded-full bg-bg shadow-neu-sm p-1">
+             <div class="w-20 h-20 rounded-full bg-bg shadow-neu-sm p-1">
                 <img :src="author.headUrl || placeholderImg" class="w-full h-full rounded-full object-cover" @error="onImgError">
              </div>
              <div class="flex-1">
-                <h2 class="font-serif font-bold text-2xl text-text mb-1">{{ author.nickname }} 的动态</h2>
-                <p class="text-text-muted text-sm max-w-md">{{ author.signature || '暂无签名' }}</p>
+                <h2 class="font-serif font-bold text-2xl text-text mb-1">{{ author.nickname }}</h2>
+                <p class="text-text-muted text-sm max-w-md line-clamp-2">{{ author.signature || '暂无签名' }}</p>
+                <div class="flex items-center gap-4 mt-2 text-xs text-text-muted">
+                    <span class="flex items-center gap-1">
+                        <Video class="w-3 h-3" />
+                        {{ videos.length }} 个视频
+                    </span>
+                </div>
              </div>
              <!-- Subscribe Button -->
              <button 
@@ -33,53 +39,109 @@
       </div>
     </header>
 
-    <div class="max-w-4xl mx-auto">
-        <div v-if="loadingVideos && !hasMoreVideos && videos.length === 0" class="flex justify-center p-12">
-          <div class="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+    <div class="max-w-5xl mx-auto">
+        <!-- Loading State -->
+        <div v-if="loadingVideos && videos.length === 0" class="flex flex-col items-center justify-center p-12">
+          <div class="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
+          <p class="text-text-muted">加载视频中...</p>
         </div>
         
-        <div v-else class="flex flex-col gap-6">
-          <div v-for="video in videos" :key="video.id" class="p-4 rounded-3xl bg-white shadow-card border border-slate-100 flex flex-col md:flex-row gap-6 transition-all hover:shadow-lg group">
-            <div class="relative w-full md:w-48 aspect-video shrink-0 rounded-2xl overflow-hidden shadow-inner">
-               <img :src="video.coverUrl" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-               <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md font-medium">{{ video.duration }}</div>
+        <!-- Video Grid -->
+        <div v-else-if="videos.length > 0" class="flex flex-col gap-6">
+          <div v-for="video in videos" :key="video.id" class="p-6 rounded-3xl bg-white shadow-card border border-slate-100 flex flex-col md:flex-row gap-6 transition-all hover:shadow-lg hover:-translate-y-0.5 group">
+            <!-- Video Thumbnail -->
+            <div class="relative w-full md:w-56 aspect-video shrink-0 rounded-2xl overflow-hidden shadow-inner bg-slate-100 cursor-pointer" @click="playVideo(video)">
+               <img :src="video.coverUrl" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" @error="onImgError">
+               <!-- Play Overlay -->
+               <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                   <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-primary/90 text-white p-3 rounded-full backdrop-blur-sm shadow-xl">
+                       <PlayCircle class="w-8 h-8" />
+                   </div>
+               </div>
+               <!-- Duration Badge -->
+               <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md font-medium">
+                   {{ video.duration }}
+               </div>
             </div>
+            
+            <!-- Video Info -->
             <div class="flex-1 flex flex-col justify-between py-2">
               <div>
-                 <div class="font-bold text-lg text-text mb-2 line-clamp-2">{{ video.title || '无标题' }}</div>
-                 <div class="flex gap-4 text-xs text-text-muted font-medium mb-4">
-                     <span>{{ formatTime(video.createTime * 1000) }}</span>
-                     <span class="px-2 py-0.5 rounded-md bg-white/50 border border-white/50">{{ video.authorName }} @ {{ video.width }}x{{ video.height }}</span>
+                 <h3 class="font-bold text-lg text-text mb-2 line-clamp-2 leading-snug">{{ video.title || '无标题视频' }}</h3>
+                 <div class="flex flex-wrap gap-3 text-xs text-text-muted font-medium mb-3">
+                     <span class="flex items-center gap-1">
+                         <Clock class="w-3 h-3" />
+                         {{ formatTime(video.createTime * 1000) }}
+                     </span>
+                     <span class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200">
+                         <Monitor class="w-3 h-3" />
+                         {{ video.width }}x{{ video.height }}
+                     </span>
                  </div>
               </div>
+              
+              <!-- Action Buttons -->
               <div class="flex gap-3">
-                <button class="px-6 py-2 rounded-xl bg-primary text-white text-sm font-semibold shadow-neu-btn hover:bg-primary-dark active:shadow-neu-btn-active transition-all" @click="playVideo(video)">在线播放</button>
-                <button class="px-6 py-2 rounded-xl bg-bg text-text-muted text-sm font-semibold shadow-neu-btn hover:text-primary active:shadow-neu-btn-active transition-all" @click="downloadVideo(video)">下载</button>
+                <button class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold shadow-neu-btn hover:bg-primary-dark active:shadow-neu-btn-active transition-all flex items-center justify-center gap-2" @click="playVideo(video)">
+                    <PlayCircle class="w-4 h-4" />
+                    <span>播放</span>
+                </button>
+                <button class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-bg text-text-muted text-sm font-semibold shadow-neu-btn hover:text-primary active:shadow-neu-btn-active transition-all flex items-center justify-center gap-2" @click="downloadVideo(video)">
+                    <Download class="w-4 h-4" />
+                    <span>下载</span>
+                </button>
               </div>
             </div>
           </div>
           
+          <!-- Load More Button -->
           <div v-if="hasMoreVideos" class="text-center mt-8 pb-12">
-              <button class="px-8 py-3 rounded-full bg-bg shadow-neu-btn text-text-muted font-medium hover:text-primary transition-all active:shadow-neu-btn-active disabled:opacity-50" @click="fetchVideos(true)" :disabled="loadingVideos">
-                  {{ loadingVideos ? '加载中...' : '加载更多视频' }}
+              <button class="px-8 py-3 rounded-full bg-bg shadow-neu-btn text-text-muted font-medium hover:text-primary transition-all active:shadow-neu-btn-active disabled:opacity-50 flex items-center gap-2 mx-auto" @click="fetchVideos(true)" :disabled="loadingVideos">
+                  <div v-if="loadingVideos" class="w-4 h-4 border-2 border-text-muted/30 border-t-text-muted rounded-full animate-spin"></div>
+                  <span>{{ loadingVideos ? '加载中...' : '加载更多视频' }}</span>
               </button>
           </div>
           
-          <div v-if="!loadingVideos && videos.length === 0" class="text-center p-12 text-text-muted bg-white rounded-[2rem] shadow-card">
-              暂无视频动态
+          <!-- No More Videos -->
+          <div v-else class="text-center p-6 text-text-muted text-sm">
+              已显示全部视频
           </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-else class="text-center p-16 text-text-muted bg-white rounded-[2rem] shadow-card">
+            <Video class="w-16 h-16 mx-auto mb-4 text-text-muted/30" />
+            <p class="text-lg font-medium mb-2">暂无视频动态</p>
+            <p class="text-sm">该用户还没有发布任何视频</p>
         </div>
     </div>
     
     <!-- Video Player Modal -->
-    <div v-if="playerUrl" class="fixed inset-0 z-50 flex justify-center items-center bg-black/60 backdrop-blur-md p-4" @click="closePlayer">
-      <div class="w-full max-w-5xl bg-white rounded-3xl shadow-card border border-slate-100 p-4" @click.stop>
-        <div class="flex justify-between items-center mb-4 px-2">
-          <h3 class="font-serif font-bold text-xl text-text">视频预览</h3>
-          <button class="w-10 h-10 rounded-full bg-bg shadow-neu-btn flex items-center justify-center text-text hover:text-red-500 active:shadow-neu-btn-active transition-all" @click="closePlayer">×</button>
+    <div v-if="playerUrl" class="fixed inset-0 z-50 flex justify-center items-center bg-black/80 backdrop-blur-md p-4" @click="closePlayer">
+      <div class="w-full max-w-5xl bg-white rounded-3xl shadow-card border border-slate-100 p-6" @click.stop>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-serif font-bold text-xl text-text">{{ currentVideo?.title || '视频预览' }}</h3>
+          <button class="w-10 h-10 rounded-full bg-bg shadow-neu-btn flex items-center justify-center text-text hover:text-red-500 active:shadow-neu-btn-active transition-all text-2xl leading-none" @click="closePlayer">×</button>
         </div>
         <div class="rounded-2xl overflow-hidden shadow-inner bg-black aspect-video">
            <video :src="playerUrl" controls autoplay class="w-full h-full"></video>
+        </div>
+        <!-- Video Info -->
+        <div v-if="currentVideo" class="mt-4 p-4 bg-slate-50 rounded-xl">
+            <div class="flex items-center gap-3 text-sm text-text-muted">
+                <span class="flex items-center gap-1">
+                    <Clock class="w-4 h-4" />
+                    {{ formatTime(currentVideo.createTime * 1000) }}
+                </span>
+                <span class="flex items-center gap-1">
+                    <Monitor class="w-4 h-4" />
+                    {{ currentVideo.width }}x{{ currentVideo.height }}
+                </span>
+                <span class="flex items-center gap-1">
+                    <Video class="w-4 h-4" />
+                    {{ currentVideo.duration }}
+                </span>
+            </div>
         </div>
       </div>
     </div>
@@ -91,7 +153,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useClientStore } from '../store/client'
 import { useRouter, useRoute } from 'vue-router'
 import { formatTime, formatDuration } from '../utils/format'
-import { Zap } from 'lucide-vue-next'
+import { Zap, PlayCircle, Download, Clock, Monitor, Video } from 'lucide-vue-next'
 
 const clientStore = useClientStore()
 const router = useRouter()
@@ -117,6 +179,7 @@ const author = ref({
 const loadingVideos = ref(false)
 const videos = ref([])
 const playerUrl = ref('')
+const currentVideo = ref(null)
 
 // Subscription state
 const isSubscribed = ref(false)
@@ -210,10 +273,10 @@ const fetchVideos = async (loadMore = false) => {
             id: v.id || v.objectId || v.displayid,
             nonceId: v.nonceId || v.objectNonceId,
             title: desc.description,
-            coverUrl: ensureHttps(v.coverUrl || media.thumbUrl),
+            coverUrl: ensureHttps(v.coverUrl || media.thumbUrl || media.coverUrl),
             createTime: v.createtime || v.createTime,
-            width: media.width,
-            height: media.height,
+            width: media.width || 0,
+            height: media.height || 0,
             duration: formatDuration(v.videoPlayLen || media.videoPlayLen || 0),
             authorName: author.value.nickname
         }
@@ -225,6 +288,7 @@ const fetchVideos = async (loadMore = false) => {
         videos.value = newVideos
     }
   } catch (err) {
+    console.error('获取视频失败:', err)
     alert('获取视频失败: ' + err.message)
   } finally {
     loadingVideos.value = false
@@ -271,10 +335,12 @@ const resolveVideoUrl = async (video) => {
 
 const playVideo = async (video) => {
     try {
+        currentVideo.value = video
         const url = await resolveVideoUrl(video)
         playerUrl.value = url
     } catch (e) {
-        alert(e.message)
+        console.error('播放视频失败:', e)
+        alert('播放失败: ' + e.message)
     }
 }
 
@@ -288,12 +354,14 @@ const downloadVideo = async (video) => {
         a.click()
         document.body.removeChild(a)
     } catch (e) {
-        alert(e.message)
+        console.error('下载视频失败:', e)
+        alert('下载失败: ' + e.message)
     }
 }
 
 const closePlayer = () => {
     playerUrl.value = ''
+    currentVideo.value = null
 }
 
 const onImgError = (e) => {

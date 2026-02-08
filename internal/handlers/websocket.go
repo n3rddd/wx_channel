@@ -320,13 +320,15 @@ const (
 	writeWait = 10 * time.Second
 
 	// 允许从对端读取下一个 pong 消息的时间
-	pongWait = 60 * time.Second
+	// 增加到 90 秒，给 keep_alive.js 更多缓冲时间
+	pongWait = 90 * time.Second
 
 	// 向对端发送 ping 的周期（必须小于 pongWait）
 	pingPeriod = (pongWait * 9) / 10
 
 	// 允许来自对端的最大消息大小
-	maxMessageSize = 512
+	// 增加到 64KB，避免大消息被截断
+	maxMessageSize = 64 * 1024
 )
 
 // 支持 CORS 的 WebSocket 升级器

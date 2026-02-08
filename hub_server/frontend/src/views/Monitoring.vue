@@ -147,6 +147,101 @@
       </div>
     </div>
 
+    <!-- WebSocket 连接详情 -->
+    <div class="bg-white rounded-3xl p-8 shadow-card border border-slate-100">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-slate-800 font-serif">WebSocket 连接详情</h3>
+        <div class="flex items-center gap-4">
+          <span class="text-sm text-slate-500">
+            总连接: <span class="font-bold text-slate-800">{{ wsStats.total_connections }}</span>
+          </span>
+          <span class="text-sm text-slate-500">
+            Ping 成功率: <span class="font-bold" :class="getPingSuccessRateClass(wsStats.ping_success_rate)">
+              {{ wsStats.ping_success_rate }}%
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <!-- WebSocket 统计卡片 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 border border-blue-200">
+          <p class="text-blue-600 text-xs font-medium mb-1">总 Ping 次数</p>
+          <p class="text-2xl font-bold text-blue-900">{{ formatNumber(wsStats.total_pings) }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-4 border border-green-200">
+          <p class="text-green-600 text-xs font-medium mb-1">总 Pong 次数</p>
+          <p class="text-2xl font-bold text-green-900">{{ formatNumber(wsStats.total_pongs) }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-4 border border-purple-200">
+          <p class="text-purple-600 text-xs font-medium mb-1">总消息数</p>
+          <p class="text-2xl font-bold text-purple-900">{{ formatNumber(wsStats.total_messages) }}</p>
+        </div>
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-4 border border-amber-200">
+          <p class="text-amber-600 text-xs font-medium mb-1">平均延迟</p>
+          <p class="text-2xl font-bold text-amber-900">{{ wsStats.avg_latency }}</p>
+        </div>
+      </div>
+
+      <!-- 连接列表 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">客户端 ID</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">主机名</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">IP 地址</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">运行时长</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">Ping/Pong</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">平均延迟</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">消息数</th>
+              <th class="p-4 border-b border-slate-100 text-slate-400 font-medium text-sm">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="wsStats.clients && wsStats.clients.length === 0">
+              <td colspan="8" class="p-8 text-center text-slate-400">
+                暂无连接
+              </td>
+            </tr>
+            <tr v-for="client in wsStats.clients" :key="client.id" class="group hover:bg-slate-50 transition-colors">
+              <td class="p-4 border-b border-slate-100 font-mono text-sm text-slate-700">
+                {{ client.id.substring(0, 12) }}...
+              </td>
+              <td class="p-4 border-b border-slate-100 font-medium text-slate-700">
+                {{ client.hostname || '-' }}
+              </td>
+              <td class="p-4 border-b border-slate-100 font-mono text-sm text-slate-600">
+                {{ client.ip }}
+              </td>
+              <td class="p-4 border-b border-slate-100 text-slate-700">
+                {{ client.uptime }}
+              </td>
+              <td class="p-4 border-b border-slate-100 font-mono text-sm">
+                <span class="text-green-600">{{ client.ping_count }}</span> / 
+                <span class="text-blue-600">{{ client.pong_count }}</span>
+              </td>
+              <td class="p-4 border-b border-slate-100 font-mono text-sm" :class="getLatencyClass(client.avg_latency)">
+                {{ client.avg_latency }}
+              </td>
+              <td class="p-4 border-b border-slate-100 font-mono text-sm text-slate-700">
+                <span class="text-purple-600">↑{{ client.messages_sent }}</span> / 
+                <span class="text-blue-600">↓{{ client.messages_recv }}</span>
+              </td>
+              <td class="p-4 border-b border-slate-100">
+                <span v-if="client.failure_count === 0" class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                  正常
+                </span>
+                <span v-else class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                  失败 {{ client.failure_count }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- 详细指标表格 -->
     <div class="bg-white rounded-3xl p-8 shadow-card border border-slate-100">
       <h3 class="text-xl font-bold text-slate-800 mb-6 font-serif">详细指标</h3>
@@ -194,6 +289,15 @@ const metrics = ref({
 })
 
 const detailedMetrics = ref([])
+const wsStats = ref({
+  total_connections: 0,
+  total_pings: 0,
+  total_pongs: 0,
+  total_messages: 0,
+  ping_success_rate: 0,
+  avg_latency: '-',
+  clients: []
+})
 
 // Chart 实例
 const connectionsChart = ref(null)
@@ -254,11 +358,58 @@ async function fetchTimeSeriesData() {
   }
 }
 
+// 获取 WebSocket 统计
+async function fetchWSStats() {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await fetch('/api/ws/stats', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    const result = await response.json()
+    
+    if (result.code === 0 && result.data) {
+      const data = result.data
+      
+      // 计算 Ping 成功率
+      const pingSuccessRate = data.total_pings > 0 
+        ? ((data.total_pongs / data.total_pings) * 100).toFixed(2)
+        : 0
+      
+      // 计算平均延迟
+      let avgLatency = '-'
+      if (data.clients && data.clients.length > 0) {
+        const latencies = data.clients
+          .map(c => c.avg_latency)
+          .filter(l => l && l !== '-')
+        
+        if (latencies.length > 0) {
+          avgLatency = latencies[0] // 使用第一个客户端的延迟作为示例
+        }
+      }
+      
+      wsStats.value = {
+        total_connections: data.total_connections || 0,
+        total_pings: data.total_pings || 0,
+        total_pongs: data.total_pongs || 0,
+        total_messages: data.total_messages || 0,
+        ping_success_rate: pingSuccessRate,
+        avg_latency: avgLatency,
+        clients: data.clients || []
+      }
+    }
+  } catch (error) {
+    console.error('获取 WebSocket 统计失败:', error)
+  }
+}
+
 // 刷新数据
 async function refreshData() {
   loading.value = true
   try {
     await fetchMetrics()
+    await fetchWSStats()
     const timeSeriesData = await fetchTimeSeriesData()
     if (timeSeriesData) {
       updateCharts(timeSeriesData)
@@ -464,6 +615,21 @@ function getStatusText(rate) {
   if (rate >= 95) return '优秀'
   if (rate >= 90) return '良好'
   return '需关注'
+}
+
+function getPingSuccessRateClass(rate) {
+  const numRate = parseFloat(rate)
+  if (numRate >= 95) return 'text-green-600'
+  if (numRate >= 90) return 'text-amber-600'
+  return 'text-red-600'
+}
+
+function getLatencyClass(latency) {
+  if (!latency || latency === '-') return 'text-slate-500'
+  const ms = parseInt(latency)
+  if (ms < 100) return 'text-green-600'
+  if (ms < 500) return 'text-amber-600'
+  return 'text-red-600'
 }
 
 onMounted(async () => {

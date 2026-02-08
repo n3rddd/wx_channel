@@ -154,15 +154,18 @@ func RemoteCall(hub *ws.Hub) http.HandlerFunc {
 		}
 
 		// 根据不同的操作设置不同的超时时间
-		timeout := 30 * time.Second
+		timeout := 2 * time.Minute // 默认 2 分钟（从 30 秒增加）
 		switch req.Action {
 		case "search_channels", "search_videos":
-			timeout = 2 * time.Minute // 搜索操作最多 2 分钟
+			timeout = 3 * time.Minute // 搜索操作最多 3 分钟
 		case "download_video":
-			timeout = 5 * time.Minute // 下载操作最多 5 分钟
+			timeout = 10 * time.Minute // 下载操作最多 10 分钟
 		case "api_call":
-			// api_call 使用 60 秒超时
-			timeout = 60 * time.Second
+			// api_call 使用 2 分钟超时
+			timeout = 2 * time.Minute
+		case "get_profile", "get_channel_info", "get_video_info":
+			// 获取信息类操作使用 1 分钟超时
+			timeout = 1 * time.Minute
 		}
 
 		resp, err := hub.Call(userID, clientID, req.Action, req.Data, timeout)

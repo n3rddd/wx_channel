@@ -37,10 +37,6 @@
         <component :is="ListTodo" class="w-5 h-5" />
         <span>任务追踪</span>
       </router-link>
-      <router-link to="/monitoring" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
-        <component :is="Activity" class="w-5 h-5" />
-        <span>系统监控</span>
-      </router-link>
       
       <div class="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-6 font-sans">Settings</div>
       <router-link to="/profile" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
@@ -48,11 +44,18 @@
         <span>个人资料</span>
       </router-link>
       
-      <div class="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-6 font-sans">Admin</div>
-      <router-link to="/admin" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
-        <component :is="Shield" class="w-5 h-5" />
-        <span>系统管理</span>
-      </router-link>
+      <!-- Admin 菜单 - 只对管理员显示 -->
+      <template v-if="userStore.user?.role === 'admin'">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-6 font-sans">Admin</div>
+        <router-link to="/admin" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
+          <component :is="Shield" class="w-5 h-5" />
+          <span>系统管理</span>
+        </router-link>
+        <router-link to="/monitoring" active-class="bg-bg shadow-neu-pressed text-primary !text-primary" class="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl text-slate-500 font-medium transition-all hover:bg-bg hover:shadow-neu-sm hover:text-primary active:shadow-neu-pressed">
+          <component :is="Activity" class="w-5 h-5" />
+          <span>系统监控</span>
+        </router-link>
+      </template>
     </nav>
 
     <!-- 底部状态 - 固定 -->
@@ -70,4 +73,7 @@
 
 <script setup>
 import { LayoutDashboard, Globe, ListTodo, Activity, Monitor, Rss, User, Shield } from 'lucide-vue-next'
+import { useUserStore } from '../store/user'
+
+const userStore = useUserStore()
 </script>

@@ -64,14 +64,17 @@ func UpsertNode(node *models.Node) error {
 	// First check if node exists
 	var existing models.Node
 	if err := DB.First(&existing, "id = ?", node.ID).Error; err != nil {
-		// New node - set CreatedAt if not already set
+		// New node - set CreatedAt and FirstSeen if not already set
 		if node.CreatedAt.IsZero() {
 			node.CreatedAt = time.Now()
+		}
+		if node.FirstSeen.IsZero() {
+			node.FirstSeen = time.Now()
 		}
 		return DB.Create(node).Error
 	}
 
-	// Update existing fields, but preserve created_at, UserID and BindStatus
+	// Update existing fields, but preserve created_at, first_seen, UserID and BindStatus
 	updates := map[string]interface{}{
 		"hostname":   node.Hostname,
 		"version":    node.Version,
@@ -79,6 +82,11 @@ func UpsertNode(node *models.Node) error {
 		"status":     node.Status,
 		"last_seen":  node.LastSeen,
 		"updated_at": time.Now(),
+	}
+
+	// Update hardware fingerprint if provided
+	if node.HardwareFingerprint != "" {
+		updates["hardware_fingerprint"] = node.HardwareFingerprint
 	}
 
 	// Only update UserID and BindStatus if they are set in the new node
@@ -119,6 +127,26 @@ func UnbindNode(id string) error {
 // DeleteNode permanently deletes a node from the database
 func DeleteNode(id string) error {
 	return DB.Delete(&models.Node{}, "id = ?", id).Error
+}
+
+// UpdateNodeDisplayName updates the display name of a node
+func UpdateNodeDisplayName(id string, displayName string) error {
+	return DB.Model(&models.Node{}).Where("id = ?", id).Update("display_name", displayName).Error
+}
+
+// UpdateNodeLockStatus updates the lock status of a node
+func UpdateNodeLockStatus(id string, isLocked bool) error {
+	return DB.Model(&models.Node{}).Where("id = ?", id).Update("is_locked", isLocked).Error
+}
+
+// UpdateNodeGroup updates the group of a node
+func UpdateNodeGroup(id string, group string) error {
+	return DB.Model(&models.Node{}).Where("id = ?", id).Update("device_group", group).Error
+}
+
+// TransferNode transfers a node to another user
+func TransferNode(id string, targetUserID uint) error {
+	return DB.Model(&models.Node{}).Where("id = ?", id).Update("user_id", targetUserID).Error
 }
 
 func CreateTask(task *models.Task) error {

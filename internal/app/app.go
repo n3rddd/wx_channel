@@ -306,8 +306,14 @@ func (app *App) Run() {
 		go app.startMetricsServer()
 	}
 
-	app.CloudConnector = cloud.NewConnector(app.Cfg, app.WSHub)
-	app.CloudConnector.Start()
+	// 启动云端连接器（如果启用）
+	if app.Cfg.CloudEnabled {
+		app.CloudConnector = cloud.NewConnector(app.Cfg, app.WSHub)
+		app.CloudConnector.Start()
+		utils.Info("✓ 云端管理功能已启用")
+	} else {
+		utils.Info("云端管理功能已禁用 (cloud_enabled: false)")
+	}
 
 	utils.Info("🔍 请打开需要下载的视频号页面进行下载")
 

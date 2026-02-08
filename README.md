@@ -241,6 +241,26 @@ WX_CHANNEL_DOWNLOAD_TIMEOUT=30
 
 ## 📚 文档
 
+### 📖 用户文档
+所有使用相关的文档都在 `docs/` 目录：
+
+- **快速开始**: [安装指南](docs/INSTALLATION.md) | [配置说明](docs/CONFIGURATION.md)
+- **功能使用**: [批量下载](docs/BATCH_DOWNLOAD_GUIDE.md) | [监控功能](docs/MONITORING_QUICKSTART.md)
+- **测试指南**: [前端测试](docs/FRONTEND_TEST_GUIDE.md)
+- **故障排除**: [常见问题](docs/TROUBLESHOOTING.md)
+
+📖 **查看所有用户文档**: [docs/INDEX.md](docs/INDEX.md)
+
+### 🔧 开发文档
+所有开发相关的文档都在 `dev-docs/` 目录：
+
+- **修复历史**: [FIX_HISTORY.md](dev-docs/FIX_HISTORY.md) - 所有修复记录 ⭐
+- **完整文档**: [DOCUMENTATION.md](dev-docs/DOCUMENTATION.md) - 项目完整文档
+- **API 文档**: [api_documentation.md](dev-docs/api_documentation.md) - API 接口文档
+- **优化记录**: WebSocket、超时、性能等优化文档
+
+📖 **查看所有开发文档**: [dev-docs/INDEX.md](dev-docs/INDEX.md)
+
 ### 快速入门
 - [安装指南](docs/INSTALLATION.md) - 详细的安装步骤
 - [项目介绍](docs/INTRODUCTION.md) - 功能特性和工作原理

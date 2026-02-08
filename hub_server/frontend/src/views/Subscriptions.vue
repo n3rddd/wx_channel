@@ -122,7 +122,7 @@ const fetchVideos = async (sub) => {
       alert(`成功获取 ${data.data.new_videos} 个新视频！\n总视频数: ${data.data.total_videos}`)
       loadSubscriptions() // Reload to update counts
     } else {
-      alert('更新失败')
+      alert(`更新失败: ${data.message || '未知错误'}`)
     }
   } catch (e) {
     console.error('Failed to fetch videos:', e)
@@ -137,6 +137,8 @@ const updateAllSubscriptions = async () => {
   
   updatingAll.value = true
   let totalNew = 0
+  let successCount = 0
+  let failedList = []
   
   for (const sub of subscriptions.value) {
     try {
@@ -148,14 +150,23 @@ const updateAllSubscriptions = async () => {
       const data = await res.json()
       if (data.code === 0) {
         totalNew += data.data.new_videos
+        successCount++
+      } else {
+        failedList.push(`${sub.wx_nickname}: ${data.message}`)
       }
     } catch (e) {
       console.error(`Failed to update ${sub.wx_nickname}:`, e)
+      failedList.push(`${sub.wx_nickname}: ${e.message}`)
     }
   }
   
   updatingAll.value = false
-  alert(`全部更新完成！共获取 ${totalNew} 个新视频`)
+  
+  let message = `更新完成！\n成功: ${successCount}/${subscriptions.value.length}\n新视频: ${totalNew} 个`
+  if (failedList.length > 0) {
+    message += `\n\n失败列表:\n${failedList.join('\n')}`
+  }
+  alert(message)
   loadSubscriptions()
 }
 

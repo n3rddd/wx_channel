@@ -21,9 +21,10 @@ type CloudMessage struct {
 }
 
 type HeartbeatPayload struct {
-	Hostname string `json:"hostname"`
-	Version  string `json:"version"`
-	Status   string `json:"status"`
+	Hostname            string `json:"hostname"`
+	Version             string `json:"version"`
+	Status              string `json:"status"`
+	HardwareFingerprint string `json:"hardware_fingerprint,omitempty"` // JSON string of hardware fingerprint
 }
 
 type CommandPayload struct {

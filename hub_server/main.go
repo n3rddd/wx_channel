@@ -54,10 +54,16 @@ func main() {
 
 	// Protected API (Need Auth)
 	router.HandleFunc("/api/auth/profile", withRecovery(middleware.AuthRequired(controllers.GetProfile)))
+	router.HandleFunc("/api/user/change-password", withRecovery(middleware.AuthRequired(controllers.ChangePassword))).Methods("POST")
+	router.HandleFunc("/api/user/stats", withRecovery(middleware.AuthRequired(controllers.GetUserStats))).Methods("GET")
 	router.HandleFunc("/api/device/bind_token", withRecovery(middleware.AuthRequired(controllers.GenerateBindToken)))
 	router.HandleFunc("/api/device/list", withRecovery(middleware.AuthRequired(controllers.GetUserDevices)))
 	router.HandleFunc("/api/device/unbind", withRecovery(middleware.AuthRequired(controllers.UnbindDevice))).Methods("POST")
 	router.HandleFunc("/api/device/delete", withRecovery(middleware.AuthRequired(controllers.DeleteDevice))).Methods("POST")
+	router.HandleFunc("/api/device/rename", withRecovery(middleware.AuthRequired(controllers.RenameDevice))).Methods("POST")
+	router.HandleFunc("/api/device/lock", withRecovery(middleware.AuthRequired(controllers.LockDevice))).Methods("POST")
+	router.HandleFunc("/api/device/group", withRecovery(middleware.AuthRequired(controllers.SetDeviceGroup))).Methods("POST")
+	router.HandleFunc("/api/device/transfer", withRecovery(middleware.AuthRequired(controllers.TransferDevice))).Methods("POST")
 
 	// Subscription API
 	router.HandleFunc("/api/subscriptions", withRecovery(middleware.AuthRequired(controllers.CreateSubscription))).Methods("POST")
@@ -94,6 +100,9 @@ func main() {
 	// Metrics API
 	router.HandleFunc("/api/metrics/summary", withRecovery(middleware.AuthRequired(controllers.GetMetricsSummary)))
 	router.HandleFunc("/api/metrics/timeseries", withRecovery(middleware.AuthRequired(controllers.GetTimeSeriesData)))
+
+	// WebSocket Stats API
+	router.HandleFunc("/api/ws/stats", withRecovery(middleware.AuthRequired(controllers.GetWSStats(hub)))).Methods("GET")
 
 	// 静态文件服务 - Vue SPA 支持
 	fs := http.FileServer(http.Dir("frontend/dist"))

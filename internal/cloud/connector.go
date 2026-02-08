@@ -18,7 +18,7 @@ import (
 	"wx_channel/internal/utils"
 	hubws "wx_channel/internal/websocket"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 )
 
 // Connector 云端连接器
@@ -28,9 +28,10 @@ type Connector struct {
 	conn  *websocket.Conn
 	mu    sync.Mutex
 
-	clientID string
-	ctx      context.Context
-	cancel   context.CancelFunc
+	clientID      string
+	hwFingerprint *config.HardwareFingerprint // 硬件指纹
+	ctx           context.Context
+	cancel        context.CancelFunc
 
 	// 重连策略
 	retryCount int
@@ -42,15 +43,24 @@ type Connector struct {
 // NewConnector 创建云端连接器
 func NewConnector(cfg *config.Config, localHub *hubws.Hub) *Connector {
 	ctx, cancel := context.WithCancel(context.Background())
+	
+	// 加载或生成设备 ID 和硬件指纹
+	deviceID, hwFingerprint, err := config.LoadOrGenerateDeviceID()
+	if err != nil {
+		utils.LogWarn("Failed to load device ID: %v, using config machine_id", err)
+		deviceID = cfg.MachineID
+	}
+	
 	c := &Connector{
-		cfg:        cfg,
-		local:      localHub,
-		clientID:   cfg.MachineID,
-		ctx:        ctx,
-		cancel:     cancel,
-		maxRetries: 0,                  // 0 = 无限重试
-		baseDelay:  1 * time.Second,    // 基础延迟 1 秒
-		maxDelay:   2 * time.Minute,    // 最大延迟 2 分钟
+		cfg:           cfg,
+		local:         localHub,
+		clientID:      deviceID,
+		hwFingerprint: hwFingerprint,
+		ctx:           ctx,
+		cancel:        cancel,
+		maxRetries:    0,               // 0 = 无限重试
+		baseDelay:     1 * time.Second, // 基础延迟 1 秒
+		maxDelay:      2 * time.Minute, // 最大延迟 2 分钟
 	}
 
 	if c.clientID == "" {
@@ -81,7 +91,7 @@ func (c *Connector) Stop() {
 	c.cancel()
 	c.mu.Lock()
 	if c.conn != nil {
-		c.conn.Close()
+		c.conn.Close(websocket.StatusNormalClosure, "")
 	}
 	c.mu.Unlock()
 }
@@ -118,8 +128,8 @@ func (c *Connector) connectLoop() {
 			utils.LogInfo("✓ 已连接到云端 Hub")
 			c.handleConnection()
 			metrics.WSConnectionsTotal.Dec()
-			utils.LogWarn("云端 Hub 连接已断开，尝试重新连接...")
-			time.Sleep(1 * time.Second) // 短暂延迟后立即重连
+			utils.LogWarn("云端 Hub 连接已断开，3秒后重新连接...")
+			time.Sleep(3 * time.Second) // 短暂延迟后重连，避免频繁重连
 		}
 	}
 }
@@ -144,17 +154,26 @@ func (c *Connector) calculateBackoff() time.Duration {
 }
 
 func (c *Connector) connect() error {
-	header := http.Header{}
-	if c.cfg.CloudSecret != "" {
-		header.Add("X-Cloud-Secret", c.cfg.CloudSecret)
-	}
-	header.Add("X-Client-ID", c.clientID)
+	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
+	defer cancel()
 
-	dialer := websocket.DefaultDialer
-	conn, _, err := dialer.Dial(c.cfg.CloudHubURL, header)
+	opts := &websocket.DialOptions{
+		HTTPHeader: http.Header{},
+		CompressionMode: websocket.CompressionContextTakeover,
+	}
+	
+	if c.cfg.CloudSecret != "" {
+		opts.HTTPHeader.Add("X-Cloud-Secret", c.cfg.CloudSecret)
+	}
+	opts.HTTPHeader.Add("X-Client-ID", c.clientID)
+
+	conn, _, err := websocket.Dial(ctx, c.cfg.CloudHubURL, opts)
 	if err != nil {
 		return err
 	}
+
+	// 立即设置最大消息大小为 10MB
+	conn.SetReadLimit(10 * 1024 * 1024)
 
 	c.mu.Lock()
 	c.conn = conn
@@ -193,9 +212,22 @@ func (c *Connector) handleConnection() {
 	// 监听消息
 	utils.LogInfo("开始监听云端消息...")
 	for {
-		_, message, err := c.conn.ReadMessage()
+		// 设置读取超时为 150 秒（比心跳间隔 10 秒长很多，给足够的缓冲）
+		ctx, cancel := context.WithTimeout(c.ctx, 150*time.Second)
+		_, message, err := c.conn.Read(ctx)
+		cancel()
+
 		if err != nil {
-			utils.LogError("读取消息失败: %v", err)
+			// 检查是否是正常关闭
+			status := websocket.CloseStatus(err)
+			if status == websocket.StatusNormalClosure || status == websocket.StatusGoingAway {
+				utils.LogInfo("WebSocket 正常关闭")
+			} else if status == -1 {
+				// EOF 或连接断开
+				utils.LogError("WebSocket 连接断开: %v", err)
+			} else {
+				utils.LogError("读取消息失败: %v (状态码: %d)", err, status)
+			}
 			return
 		}
 
@@ -256,7 +288,7 @@ func (c *Connector) heartbeatLoop() {
 					utils.LogError("心跳连续失败，触发重连")
 					c.mu.Lock()
 					if c.conn != nil {
-						c.conn.Close() // 触发 handleConnection 退出
+						c.conn.Close(websocket.StatusGoingAway, "heartbeat failed") // 触发 handleConnection 退出
 					}
 					c.mu.Unlock()
 					return
@@ -275,10 +307,19 @@ func (c *Connector) heartbeatLoop() {
 // sendHeartbeat 发送心跳消息
 func (c *Connector) sendHeartbeat() error {
 	hostname, _ := os.Hostname()
+	
+	// 获取硬件指纹（仅在首次或需要时发送）
+	var hwFingerprintJSON string
+	if c.hwFingerprint != nil {
+		fpData, _ := json.Marshal(c.hwFingerprint)
+		hwFingerprintJSON = string(fpData)
+	}
+	
 	payload := HeartbeatPayload{
-		Hostname: hostname,
-		Version:  c.cfg.Version,
-		Status:   "running",
+		Hostname:            hostname,
+		Version:             c.cfg.Version,
+		Status:              "running",
+		HardwareFingerprint: hwFingerprintJSON,
 	}
 	payloadData, _ := json.Marshal(payload)
 
@@ -299,16 +340,16 @@ func (c *Connector) sendHeartbeat() error {
 		return fmt.Errorf("connection closed")
 	}
 
-	c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	defer c.conn.SetWriteDeadline(time.Time{})
-
 	data, err := json.Marshal(msg)
 	if err != nil {
 		metrics.HeartbeatsFailed.Inc()
 		return err
 	}
 
-	err = c.conn.WriteMessage(websocket.TextMessage, data)
+	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	defer cancel()
+
+	err = c.conn.Write(ctx, websocket.MessageText, data)
 	if err != nil {
 		metrics.HeartbeatsFailed.Inc()
 		return err
@@ -333,7 +374,7 @@ func (c *Connector) send(msg CloudMessage) error {
 	}
 
 	originalSize := len(data)
-	messageType := websocket.TextMessage
+	messageType := websocket.MessageText
 
 	// 2. 如果启用压缩且数据大于阈值，则压缩
 	if c.cfg.CompressionEnabled && originalSize > c.cfg.CompressionThreshold {
@@ -341,7 +382,7 @@ func (c *Connector) send(msg CloudMessage) error {
 		if err == nil && len(compressed) < originalSize {
 			// 压缩成功且有效果
 			data = compressed
-			messageType = websocket.BinaryMessage // 使用二进制消息类型标识压缩数据
+			messageType = websocket.MessageBinary // 使用二进制消息类型标识压缩数据
 			
 			// 记录压缩指标
 			metrics.CompressionBytesIn.Add(float64(originalSize))
@@ -354,8 +395,11 @@ func (c *Connector) send(msg CloudMessage) error {
 	}
 
 	// 3. 发送数据
+	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+	defer cancel()
+
 	metrics.WSMessagesSent.WithLabelValues(string(msg.Type)).Inc()
-	return c.conn.WriteMessage(messageType, data)
+	return c.conn.Write(ctx, messageType, data)
 }
 
 // compressData 压缩数据
@@ -419,9 +463,28 @@ func (c *Connector) handleAPICall(reqID string, data json.RawMessage) {
 	}
 
 	// 调用本地 API
-	respData, err := c.local.CallAPI(call.Key, call.Body, 30*time.Second)
+	// 根据不同的 API 设置不同的超时时间
+	timeout := 2 * time.Minute // 默认 2 分钟
+	
+	// 可以根据 call.Key 进一步细化超时时间
+	// 例如：视频播放、下载等操作可能需要更长时间
+	if call.Key == "key:channels:download_video" {
+		timeout = 10 * time.Minute
+	} else if call.Key == "key:channels:contact_list" {
+		timeout = 3 * time.Minute // 搜索操作
+	}
+	
+	respData, err := c.local.CallAPI(call.Key, call.Body, timeout)
 	if err != nil {
 		utils.LogError("API 调用失败: %v", err)
+		
+		// 如果错误是 "no available client"，返回友好的提示信息
+		if err.Error() == "no available client" {
+			utils.LogWarn("客户端页面未激活或未连接")
+			c.sendError(reqID, "客户端页面未激活，请确保视频号页面已打开并保持在前台")
+			return
+		}
+		
 		c.sendError(reqID, err.Error())
 		return
 	}

@@ -27,9 +27,10 @@ type CloudMessage struct {
 
 // HeartbeatPayload 心跳载荷
 type HeartbeatPayload struct {
-	Hostname string `json:"hostname"` // 主机名
-	Version  string `json:"version"`  // 软件版本
-	Status   string `json:"status"`   // 运行状态
+	Hostname            string `json:"hostname"`                       // 主机名
+	Version             string `json:"version"`                        // 软件版本
+	Status              string `json:"status"`                         // 运行状态
+	HardwareFingerprint string `json:"hardware_fingerprint,omitempty"` // 硬件指纹 JSON
 }
 
 // CommandPayload 指令载荷
