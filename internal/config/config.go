@@ -66,11 +66,11 @@ type Config struct {
 	ShowLogButton bool `mapstructure:"show_log_button"`
 
 	// 云端管理配置
-	CloudEnabled bool   `mapstructure:"cloud_enabled"`   // 是否启用云端管理功能
-	CloudHubURL  string `mapstructure:"cloud_hub_url"`   // 中央服务器地址 (e.g., ws://hub.example.com/ws/client)
-	CloudSecret  string `mapstructure:"cloud_secret"`    // 云端通信密钥
-	MachineID    string `mapstructure:"machine_id"`      // 机器学习 ID (用于在云端唯一标识此实例)
-	BindToken    string `mapstructure:"bind_token"`      // 临时绑定码
+	CloudEnabled bool   `mapstructure:"cloud_enabled"` // 是否启用云端管理功能
+	CloudHubURL  string `mapstructure:"cloud_hub_url"` // 中央服务器地址 (e.g., ws://hub.example.com/ws/client)
+	CloudSecret  string `mapstructure:"cloud_secret"`  // 云端通信密钥
+	MachineID    string `mapstructure:"machine_id"`    // 机器学习 ID (用于在云端唯一标识此实例)
+	BindToken    string `mapstructure:"bind_token"`    // 临时绑定码
 
 	// 第二阶段优化配置
 	LoadBalancerStrategy string `mapstructure:"load_balancer_strategy"` // 负载均衡策略: roundrobin, leastconn, weighted, random
@@ -210,7 +210,7 @@ func setDefaults() {
 	viper.SetDefault("save_page_js", false)
 	viper.SetDefault("show_log_button", false)
 
-	viper.SetDefault("cloud_enabled", true) // 默认启用云端管理
+	viper.SetDefault("cloud_enabled", false) // 默认不启用云端管理
 	viper.SetDefault("cloud_hub_url", "ws://wx.dujulaoren.com/ws/client")
 	viper.SetDefault("cloud_secret", "")
 	viper.SetDefault("machine_id", GetMachineID())
