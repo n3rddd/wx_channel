@@ -39,6 +39,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// bcrypt 最多处理 72 字节，超出部分会被静默截断
+	if len(req.Password) > 72 {
+		http.Error(w, "Password too long (max 72 bytes)", http.StatusBadRequest)
+		return
+	}
+
 	// Check existing
 	if _, err := database.GetUserByEmail(req.Email); err == nil {
 		http.Error(w, "User already exists", http.StatusConflict)
@@ -66,7 +72,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Auto login
-	token, _ := middleware.GenerateToken(user.ID, user.Email, user.Role)
+	token, err := middleware.GenerateToken(user.ID, user.Email, user.Role)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AuthResponse{
@@ -107,7 +117,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetProfile(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	user, err := database.GetUserByID(userID)
 	if err != nil {

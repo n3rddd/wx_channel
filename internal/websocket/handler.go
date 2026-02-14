@@ -41,11 +41,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		CompressionMode: websocket.CompressionContextTakeover,
+		CompressionMode:    websocket.CompressionContextTakeover,
+		InsecureSkipVerify: true, // 已在上方 isOriginAllowed 中完成 Origin 校验
 	})
 	if err != nil {
 		fmt.Printf("[WebSocket] 连接升级失败: %v\n", err)
-		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
+		// 注意: websocket.Accept 失败时已写入响应，不应再次调用 http.Error
 		return
 	}
 

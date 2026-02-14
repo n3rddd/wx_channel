@@ -76,12 +76,8 @@ func (h *Hub) cleanupStaleConnections() {
 
 	for range ticker.C {
 		h.mu.RLock()
-		staleClients := []*Client{}
+		staleIDs := []string{}
 		// 增加超时阈值到 900 秒（15 分钟），以支持长时间的 API 调用
-		// - api_call: 2 分钟
-		// - search_channels/videos: 3 分钟
-		// - download_video: 10 分钟
-		// 900 秒阈值提供充足的缓冲，同时仍能清理真正的僵尸连接
 		threshold := time.Now().Add(-900 * time.Second)
 
 		for _, client := range h.Clients {
@@ -90,16 +86,22 @@ func (h *Hub) cleanupStaleConnections() {
 			client.mu.Unlock()
 
 			if lastSeen.Before(threshold) {
-				staleClients = append(staleClients, client)
+				staleIDs = append(staleIDs, client.ID)
 			}
 		}
 		h.mu.RUnlock()
 
-		// 清理僵尸连接
-		for _, client := range staleClients {
-			log.Printf("清理僵尸连接: %s (最后心跳: %v, 已超时 %v)",
-				client.ID, client.LastSeen, time.Since(client.LastSeen))
-			h.Unregister <- client
+		// 在锁外直接清理，避免向 Unregister channel 发送（防死锁）
+		for _, id := range staleIDs {
+			h.mu.Lock()
+			if client, ok := h.Clients[id]; ok {
+				log.Printf("清理僵尸连接: %s (最后心跳: %v, 已超时 %v)",
+					client.ID, client.LastSeen, time.Since(client.LastSeen))
+				client.Close()
+				delete(h.Clients, id)
+				database.UpdateNodeStatus(id, "offline")
+			}
+			h.mu.Unlock()
 		}
 	}
 }
@@ -208,6 +210,10 @@ func (h *Hub) Call(userID uint, clientID string, action string, data interface{}
 		return ResponsePayload{}, fmt.Errorf("发送消息失败: %w", err)
 	}
 
+	// 创建超时 timer（可被 Stop 释放，避免 time.After 泄漏）
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
 	select {
 	case resp, ok := <-respChan:
 		duration := time.Since(startTime)
@@ -228,7 +234,7 @@ func (h *Hub) Call(userID uint, clientID string, action string, data interface{}
 		database.UpdateTaskResult(task.ID, status, string(resBytes), resp.Error)
 		return resp, nil
 
-	case <-time.After(timeout):
+	case <-timer.C:
 		log.Printf("远程调用超时: ID=%s, Timeout=%v", reqID, timeout)
 		database.UpdateTaskResult(task.ID, "timeout", "", "request timeout")
 		return ResponsePayload{}, fmt.Errorf("请求超时")

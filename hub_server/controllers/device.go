@@ -5,13 +5,14 @@ import (
 	"net/http"
 
 	"wx_channel/hub_server/database"
+	"wx_channel/hub_server/middleware"
 	"wx_channel/hub_server/models"
 	"wx_channel/hub_server/services"
 )
 
 // GenerateBindToken returns a short code for the user to input in the client
 func GenerateBindToken(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	token, err := services.Binder.GenerateToken(userID)
 	if err != nil {
@@ -27,7 +28,7 @@ func GenerateBindToken(w http.ResponseWriter, r *http.Request) {
 
 // GetUserDevices returns all devices bound to the current user
 func GetUserDevices(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	user, err := database.GetUserByID(userID)
 	if err != nil {
@@ -48,7 +49,7 @@ func GetUserDevices(w http.ResponseWriter, r *http.Request) {
 
 // GetUserStats returns user statistics (device count, subscription count, etc.)
 func GetUserStats(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	// Get user with devices
 	user, err := database.GetUserByID(userID)
@@ -78,7 +79,7 @@ func GetUserStats(w http.ResponseWriter, r *http.Request) {
 
 // UnbindDevice removes the binding between a device and the user
 func UnbindDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	// 解析请求参数
 	var req struct {
@@ -123,7 +124,7 @@ func UnbindDevice(w http.ResponseWriter, r *http.Request) {
 
 // DeleteDevice permanently deletes a device from the database
 func DeleteDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	// 解析请求参数
 	var req struct {
@@ -168,7 +169,7 @@ func DeleteDevice(w http.ResponseWriter, r *http.Request) {
 
 // RenameDevice updates the display name of a device
 func RenameDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	var req struct {
 		DeviceID    string `json:"device_id"`
@@ -213,7 +214,7 @@ func RenameDevice(w http.ResponseWriter, r *http.Request) {
 
 // LockDevice locks a device to prevent transfer
 func LockDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	var req struct {
 		DeviceID string `json:"device_id"`
@@ -258,7 +259,7 @@ func LockDevice(w http.ResponseWriter, r *http.Request) {
 
 // SetDeviceGroup sets the group for a device
 func SetDeviceGroup(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	var req struct {
 		DeviceID    string `json:"device_id"`
@@ -303,11 +304,11 @@ func SetDeviceGroup(w http.ResponseWriter, r *http.Request) {
 
 // TransferDevice transfers a device to another user
 func TransferDevice(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	var req struct {
-		DeviceID      string `json:"device_id"`
-		TargetUserID  uint   `json:"target_user_id"`
+		DeviceID     string `json:"device_id"`
+		TargetUserID uint   `json:"target_user_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

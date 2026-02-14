@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 	"wx_channel/internal/utils"
 
@@ -107,7 +108,7 @@ func (c *Client) ReadPump() {
 						utils.LogError("API 响应处理 panic: %v", r)
 					}
 				}()
-				
+
 				var resp APICallResponse
 				if err := json.Unmarshal(m.Data, &resp); err != nil {
 					utils.LogError("API 响应解析失败: %v", err)
@@ -189,7 +190,7 @@ func (c *Client) pingLoop() {
 			ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
 			err := c.Conn.Ping(ctx)
 			cancel()
-			
+
 			if err != nil {
 				utils.LogError("Ping 失败: %v", err)
 				return
@@ -201,21 +202,23 @@ func (c *Client) pingLoop() {
 
 // GetActiveRequests 获取活跃请求数
 func (c *Client) GetActiveRequests() int {
-	return int(c.activeRequests)
+	return int(atomic.LoadInt32(&c.activeRequests))
 }
 
 // IncrementActiveRequests 增加活跃请求数
 func (c *Client) IncrementActiveRequests() {
-	c.mu.Lock()
-	c.activeRequests++
-	c.mu.Unlock()
+	atomic.AddInt32(&c.activeRequests, 1)
 }
 
 // DecrementActiveRequests 减少活跃请求数
 func (c *Client) DecrementActiveRequests() {
-	c.mu.Lock()
-	if c.activeRequests > 0 {
-		c.activeRequests--
+	for {
+		old := atomic.LoadInt32(&c.activeRequests)
+		if old <= 0 {
+			return
+		}
+		if atomic.CompareAndSwapInt32(&c.activeRequests, old, old-1) {
+			return
+		}
 	}
-	c.mu.Unlock()
 }

@@ -136,6 +136,7 @@ func (app *App) Run() {
 	// 确保端口设置正确
 	app.Sunny.SetPort(app.Port)
 
+	done := make(chan struct{})
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -150,7 +151,7 @@ func (app *App) Run() {
 				Port:     strconv.Itoa(app.Port),
 			})
 		}
-		os.Exit(0)
+		close(done)
 	}()
 
 	// 启动时检查更新 (移到这里以确保尽早执行)
@@ -353,7 +354,7 @@ func (app *App) Run() {
 
 	// 启动时检查更新 - 已移动到 Run 函数开头
 
-	select {}
+	<-done
 }
 
 // GlobalHttpCallback 桥接到单例 app 实例
@@ -475,7 +476,11 @@ func (app *App) startWebSocketServer(wsPort int) {
 
 	mux.HandleFunc("/ws/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+		}
 		hub := handlers.GetWebSocketHub()
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",

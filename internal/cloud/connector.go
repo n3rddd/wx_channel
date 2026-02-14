@@ -38,19 +38,23 @@ type Connector struct {
 	maxRetries int           // 最大重试次数（0 = 无限重试）
 	baseDelay  time.Duration // 基础延迟
 	maxDelay   time.Duration // 最大延迟
+
+	// 性能优化
+	gzipPool      sync.Pool    // 复用 gzip.Writer
+	metricsClient *http.Client // 复用 HTTP 客户端
 }
 
 // NewConnector 创建云端连接器
 func NewConnector(cfg *config.Config, localHub *hubws.Hub) *Connector {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// 加载或生成设备 ID 和硬件指纹
 	deviceID, hwFingerprint, err := config.LoadOrGenerateDeviceID()
 	if err != nil {
 		utils.LogWarn("Failed to load device ID: %v, using config machine_id", err)
 		deviceID = cfg.MachineID
 	}
-	
+
 	c := &Connector{
 		cfg:           cfg,
 		local:         localHub,
@@ -61,6 +65,10 @@ func NewConnector(cfg *config.Config, localHub *hubws.Hub) *Connector {
 		maxRetries:    0,               // 0 = 无限重试
 		baseDelay:     1 * time.Second, // 基础延迟 1 秒
 		maxDelay:      2 * time.Minute, // 最大延迟 2 分钟
+		gzipPool: sync.Pool{
+			New: func() interface{} { return gzip.NewWriter(nil) },
+		},
+		metricsClient: &http.Client{Timeout: 5 * time.Second},
 	}
 
 	if c.clientID == "" {
@@ -109,13 +117,13 @@ func (c *Connector) connectLoop() {
 			if err != nil {
 				c.retryCount++
 				delay := c.calculateBackoff()
-				
+
 				if c.maxRetries > 0 && c.retryCount >= c.maxRetries {
 					utils.LogError("云端连接失败 (重试 %d/%d): %v", c.retryCount, c.maxRetries, err)
 					utils.LogError("达到最大重试次数，停止重连")
 					return
 				}
-				
+
 				utils.LogWarn("云端连接失败 (重试 %d): %v, %v 后重试...", c.retryCount, err, delay)
 				time.Sleep(delay)
 				continue
@@ -143,11 +151,11 @@ func (c *Connector) calculateBackoff() time.Duration {
 	// 指数退避：1s, 2s, 4s, 8s, 16s, 32s, 64s, 120s (max)
 	multiplier := 1 << uint(c.retryCount-1)
 	delay := c.baseDelay * time.Duration(multiplier)
-	
+
 	if delay > c.maxDelay {
 		delay = c.maxDelay
 	}
-	
+
 	// 添加随机抖动 (0-25%)，避免雷鸣群效应
 	jitter := time.Duration(rand.Int63n(int64(delay / 4)))
 	return delay + jitter
@@ -158,10 +166,10 @@ func (c *Connector) connect() error {
 	defer cancel()
 
 	opts := &websocket.DialOptions{
-		HTTPHeader: http.Header{},
+		HTTPHeader:      http.Header{},
 		CompressionMode: websocket.CompressionContextTakeover,
 	}
-	
+
 	if c.cfg.CloudSecret != "" {
 		opts.HTTPHeader.Add("X-Cloud-Secret", c.cfg.CloudSecret)
 	}
@@ -203,7 +211,7 @@ func (c *Connector) handleConnection() {
 
 	// 启动心跳
 	go c.heartbeatLoop()
-	
+
 	// 启动监控数据推送（如果启用了监控）
 	if c.cfg.MetricsEnabled {
 		go c.metricsLoop()
@@ -254,15 +262,6 @@ func (c *Connector) handleConnection() {
 		}(msg)
 	}
 }
-
-// min 返回两个整数中的较小值
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func (c *Connector) heartbeatLoop() {
 	ticker := time.NewTicker(10 * time.Second) // 优化：缩短心跳间隔到 10 秒
 	defer ticker.Stop()
@@ -283,7 +282,7 @@ func (c *Connector) heartbeatLoop() {
 			if err := c.sendHeartbeat(); err != nil {
 				missedHeartbeats++
 				utils.LogWarn("心跳发送失败 (%d/%d): %v", missedHeartbeats, maxMissed, err)
-				
+
 				if missedHeartbeats >= maxMissed {
 					utils.LogError("心跳连续失败，触发重连")
 					c.mu.Lock()
@@ -307,14 +306,14 @@ func (c *Connector) heartbeatLoop() {
 // sendHeartbeat 发送心跳消息
 func (c *Connector) sendHeartbeat() error {
 	hostname, _ := os.Hostname()
-	
+
 	// 获取硬件指纹（仅在首次或需要时发送）
 	var hwFingerprintJSON string
 	if c.hwFingerprint != nil {
 		fpData, _ := json.Marshal(c.hwFingerprint)
 		hwFingerprintJSON = string(fpData)
 	}
-	
+
 	payload := HeartbeatPayload{
 		Hostname:            hostname,
 		Version:             c.cfg.Version,
@@ -334,7 +333,7 @@ func (c *Connector) sendHeartbeat() error {
 	// 设置写入超时
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if c.conn == nil {
 		metrics.HeartbeatsFailed.Inc()
 		return fmt.Errorf("connection closed")
@@ -383,13 +382,13 @@ func (c *Connector) send(msg CloudMessage) error {
 			// 压缩成功且有效果
 			data = compressed
 			messageType = websocket.MessageBinary // 使用二进制消息类型标识压缩数据
-			
+
 			// 记录压缩指标
 			metrics.CompressionBytesIn.Add(float64(originalSize))
 			metrics.CompressionBytesOut.Add(float64(len(compressed)))
-			
+
 			compressionRate := float64(originalSize-len(compressed)) / float64(originalSize) * 100
-			utils.LogInfo("数据压缩: %d -> %d 字节 (压缩率: %.1f%%)", 
+			utils.LogInfo("数据压缩: %d -> %d 字节 (压缩率: %.1f%%)",
 				originalSize, len(compressed), compressionRate)
 		}
 	}
@@ -402,25 +401,29 @@ func (c *Connector) send(msg CloudMessage) error {
 	return c.conn.Write(ctx, messageType, data)
 }
 
-// compressData 压缩数据
+// compressData 压缩数据（复用 gzip.Writer）
 func (c *Connector) compressData(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
-	writer := gzip.NewWriter(&buf)
-	
+	writer := c.gzipPool.Get().(*gzip.Writer)
+	writer.Reset(&buf)
+
 	if _, err := writer.Write(data); err != nil {
+		c.gzipPool.Put(writer)
 		return nil, err
 	}
-	
+
 	if err := writer.Close(); err != nil {
+		c.gzipPool.Put(writer)
 		return nil, err
 	}
-	
+
+	c.gzipPool.Put(writer)
 	return buf.Bytes(), nil
 }
 
 func (c *Connector) processMessage(msg CloudMessage) {
 	metrics.WSMessagesReceived.WithLabelValues(string(msg.Type)).Inc()
-	
+
 	if msg.Type != MsgTypeCommand {
 		return
 	}
@@ -465,7 +468,7 @@ func (c *Connector) handleAPICall(reqID string, data json.RawMessage) {
 	// 调用本地 API
 	// 根据不同的 API 设置不同的超时时间
 	timeout := 2 * time.Minute // 默认 2 分钟
-	
+
 	// 可以根据 call.Key 进一步细化超时时间
 	// 例如：视频播放、下载等操作可能需要更长时间
 	if call.Key == "key:channels:download_video" {
@@ -473,18 +476,18 @@ func (c *Connector) handleAPICall(reqID string, data json.RawMessage) {
 	} else if call.Key == "key:channels:contact_list" {
 		timeout = 3 * time.Minute // 搜索操作
 	}
-	
+
 	respData, err := c.local.CallAPI(call.Key, call.Body, timeout)
 	if err != nil {
 		utils.LogError("API 调用失败: %v", err)
-		
+
 		// 如果错误是 "no available client"，返回友好的提示信息
 		if err.Error() == "no available client" {
 			utils.LogWarn("客户端页面未激活或未连接")
 			c.sendError(reqID, "客户端页面未激活，请确保视频号页面已打开并保持在前台")
 			return
 		}
-		
+
 		c.sendError(reqID, err.Error())
 		return
 	}
@@ -493,7 +496,7 @@ func (c *Connector) handleAPICall(reqID string, data json.RawMessage) {
 	if call.Key == "key:channels:contact_list" {
 		respData = c.transformSearchResponse(call.Body, respData)
 	}
-	
+
 	// 返回结果
 	c.sendResponse(reqID, true, respData, "")
 }
@@ -555,7 +558,7 @@ func (c *Connector) transformSearchResponse(requestBody, responseData json.RawMe
 		return responseData // 返回原始数据
 	}
 
-	utils.LogInfo("[DEBUG] 数据转换成功: type=%d, listSize=%d, hasMore=%v", 
+	utils.LogInfo("[DEBUG] 数据转换成功: type=%d, listSize=%d, hasMore=%v",
 		reqBody.Type, len(list), rawResp.Data.Continue != 0)
 
 	return optimizedBytes
@@ -612,9 +615,8 @@ func (c *Connector) metricsLoop() {
 func (c *Connector) pushMetrics() error {
 	// 从本地 metrics 端点获取数据
 	metricsURL := fmt.Sprintf("http://localhost:%d/metrics", c.cfg.MetricsPort)
-	
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(metricsURL)
+
+	resp, err := c.metricsClient.Get(metricsURL)
 	if err != nil {
 		return fmt.Errorf("获取监控数据失败: %w", err)
 	}

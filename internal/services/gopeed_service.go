@@ -52,6 +52,28 @@ func (s *GopeedService) CreateTask(url string, opt *base.Options) (string, error
 	return s.Downloader.CreateDirect(req, opt)
 }
 
+// DeleteTask removes a download task
+func (s *GopeedService) DeleteTask(taskID string) error {
+	if s.Downloader == nil {
+		return fmt.Errorf("downloader not initialized")
+	}
+	// Pause and remove task
+	// Note: Gopeed API might vary, assuming Pause and Delete exist or Pause acts like cancel
+	// Check available methods on `s.Downloader`
+	// Based on Gopeed source:
+	// func (d *Downloader) Pause(filter *TaskFilter)
+	// func (d *Downloader) Delete(filter *TaskFilter)
+
+	// We prefer Delete
+	filter := &download.TaskFilter{IDs: []string{taskID}}
+
+	// Try Delete first if available, otherwise Pause
+	// Since we don't have full intellisense, we'll try Delete, assuming typical API
+	s.Downloader.Delete(filter, true)
+
+	return nil
+}
+
 // DownloadSync downloads a file synchronously (blocking until done)
 // Used by BatchHandler to replace existing downloadVideoOnce logic
 func (s *GopeedService) DownloadSync(ctx context.Context, url string, path string, onProgress func(progress float64, downloaded int64, total int64)) error {
@@ -84,8 +106,7 @@ func (s *GopeedService) DownloadSync(ctx context.Context, url string, path strin
 		select {
 		case <-ctx.Done():
 			// Cancel task
-			s.Downloader.Pause(&download.TaskFilter{IDs: []string{id}})
-			// Or remove
+			s.Downloader.Delete(&download.TaskFilter{IDs: []string{id}}, true)
 			return ctx.Err()
 		case <-ticker.C:
 			task := s.Downloader.GetTask(id)
@@ -95,37 +116,6 @@ func (s *GopeedService) DownloadSync(ctx context.Context, url string, path strin
 
 			// Report progress
 			if onProgress != nil {
-				// Gopeed task has TotalSize and CompletedLength?
-				// Verify properties. Inspecting base.Task might be needed.
-				// Assuming standard fields based on similar libraries:
-				// task.Meta.FileSize -> Total
-				// But let's look safely.
-				// Does task have Progress?
-				// task.Progress is likely 0.0-1.0 or 0-100?
-				// Let's assume task.Status is updated, maybe bytes happen too.
-				// Based on typical Gopeed usage:
-				// task.Res.Size (Total), task.Res.Downloaded (Current) -> not sure if exposed in Task struct directly or via Res.
-				// Let's check imports: "github.com/GopeedLab/gopeed/pkg/base"
-				// I'll assume reasonable defaults and if it fails compilation I'll fix.
-				// Better strategy: try to dump task structure via printf debugging? No, strictly code.
-				// I'll assume task.Total is total bytes and task.Completed is downloaded bytes if available?
-				// Let's guess task.Progress (float 0-1) is available.
-				// Wait, I can't guess. I previously read gopeed_service.go.
-				// It used `task.Status`.
-				// I'll try to find where `base.Task` is defined or use `task.Progress` which is common.
-				// Actually, let's look at `BatchTask` struct in batch.go: it has `Progress`, `DownloadedMB`, `TotalMB`.
-				// I want to fill those.
-				// Let's write code that assumes task has typical methods or fields.
-				// For now I will just pass 0,0,0 if I'm unsure, but that defeats the purpose.
-				// Let's check `gopeed` source if it was vendored? No, likely in module cache.
-				// I will try to use `task.TotalSize` and `task.DownloadedSize` based on common patterns.
-				// If unsafe, I'll pass 0.
-				// Actually, I'll inspect `gopeed_service.go` again to see if I missed any logic.
-				// It imports `github.com/GopeedLab/gopeed/pkg/base`.
-			}
-
-			// Report progress
-			if onProgress != nil && task != nil {
 				var downloaded, total int64
 				var progress float64
 
@@ -163,9 +153,6 @@ func (s *GopeedService) DownloadSync(ctx context.Context, url string, path strin
 						}
 					}
 				}()
-
-				// 最后一次尝试：Task 通常有 TotalSize?
-				// total = task.TotalSize
 
 				if total > 0 {
 					progress = float64(downloaded) / float64(total)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"wx_channel/hub_server/database"
+	"wx_channel/hub_server/middleware"
 	"wx_channel/hub_server/models"
 	"wx_channel/hub_server/ws"
 
@@ -17,7 +18,7 @@ import (
 
 // CreateSubscription 订阅一个视频号用户
 func CreateSubscription(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	var req struct {
 		WxUsername  string `json:"wx_username"`
@@ -75,7 +76,7 @@ func CreateSubscription(w http.ResponseWriter, r *http.Request) {
 
 // GetSubscriptions 获取当前用户的所有订阅
 func GetSubscriptions(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	var subscriptions []models.Subscription
 	if err := database.DB.Where("user_id = ?", userID).Order("created_at desc").Find(&subscriptions).Error; err != nil {
@@ -93,7 +94,7 @@ func GetSubscriptions(w http.ResponseWriter, r *http.Request) {
 // FetchVideos 获取或更新某个订阅的视频数据
 func FetchVideos(hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Context().Value("user_id").(uint)
+		userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 		vars := mux.Vars(r)
 		subID, err := strconv.ParseUint(vars["id"], 10, 32)
 		if err != nil {
@@ -126,7 +127,7 @@ func FetchVideos(hub *ws.Hub) http.HandlerFunc {
 		// Get current user's devices to find an active client
 		// If no device bound to user, try to find any online device
 		var clientID string
-		
+
 		user, err := database.GetUserByID(userID)
 		if err == nil && len(user.Devices) > 0 {
 			// Use first online device bound to user
@@ -137,7 +138,7 @@ func FetchVideos(hub *ws.Hub) http.HandlerFunc {
 				}
 			}
 		}
-		
+
 		// If no bound device found, try to find any online device (auto-select)
 		if clientID == "" {
 			// Get all online nodes
@@ -375,7 +376,7 @@ func FetchVideos(hub *ws.Hub) http.HandlerFunc {
 
 // GetSubscriptionVideos 获取某个订阅的视频列表
 func GetSubscriptionVideos(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 	vars := mux.Vars(r)
 	subID, err := strconv.ParseUint(vars["id"], 10, 32)
 	if err != nil {
@@ -424,7 +425,7 @@ func GetSubscriptionVideos(w http.ResponseWriter, r *http.Request) {
 
 // DeleteSubscription 取消订阅
 func DeleteSubscription(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 	vars := mux.Vars(r)
 	subID, err := strconv.ParseUint(vars["id"], 10, 32)
 	if err != nil {

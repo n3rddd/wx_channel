@@ -16,6 +16,37 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// recoveryMiddleware 全局 panic 恢复中间件
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("PANIC: %v\nStack: %s", err, string(debug.Stack()))
+				http.Error(w, "Internal Server Error", 500)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// authMiddleware 认证中间件（适配 gorilla/mux）
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		middleware.AuthRequired(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})(w, r)
+	})
+}
+
+// adminMiddleware 管理员权限中间件
+func adminMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		middleware.AdminRequired(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})(w, r)
+	})
+}
+
 func main() {
 	if err := middleware.InitJWTSecretFromEnv(); err != nil {
 		log.Fatalf("Invalid JWT secret configuration: %v", err)
@@ -33,83 +64,75 @@ func main() {
 	// 2.5 启动积分矿工服务 (在线时长统计)
 	services.StartMiningService()
 
-	// 3. Middleware: Panic Recovery
-	withRecovery := func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				if err := recover(); err != nil {
-					log.Printf("PANIC: %v\nStack: %s", err, string(debug.Stack()))
-					http.Error(w, "Internal Server Error", 500)
-				}
-			}()
-			next(w, r)
-		}
-	}
-
-	// 4. 创建路由器
+	// 3. 创建路由器（全局 panic recovery）
 	router := mux.NewRouter()
+	router.Use(recoveryMiddleware)
 
-	// WebSocket 接入点
-	router.HandleFunc("/ws/client", withRecovery(hub.ServeWs)).Methods("GET")
+	// WebSocket 接入点（无需认证）
+	router.HandleFunc("/ws/client", hub.ServeWs).Methods("GET")
 
-	// Auth API
-	router.HandleFunc("/api/auth/register", withRecovery(controllers.Register)).Methods("POST")
-	router.HandleFunc("/api/auth/login", withRecovery(controllers.Login)).Methods("POST")
+	// ─── 公开 API ───
+	router.HandleFunc("/api/auth/register", controllers.Register).Methods("POST")
+	router.HandleFunc("/api/auth/login", controllers.Login).Methods("POST")
+	router.HandleFunc("/api/video/play", controllers.PlayVideo).Methods("GET")
 
-	// Protected API (Need Auth)
-	router.HandleFunc("/api/auth/profile", withRecovery(middleware.AuthRequired(controllers.GetProfile))).Methods("GET")
-	router.HandleFunc("/api/user/change-password", withRecovery(middleware.AuthRequired(controllers.ChangePassword))).Methods("POST")
-	router.HandleFunc("/api/user/stats", withRecovery(middleware.AuthRequired(controllers.GetUserStats))).Methods("GET")
-	router.HandleFunc("/api/device/bind_token", withRecovery(middleware.AuthRequired(controllers.GenerateBindToken))).Methods("POST")
-	router.HandleFunc("/api/device/list", withRecovery(middleware.AuthRequired(controllers.GetUserDevices))).Methods("GET")
-	router.HandleFunc("/api/device/unbind", withRecovery(middleware.AuthRequired(controllers.UnbindDevice))).Methods("POST")
-	router.HandleFunc("/api/device/delete", withRecovery(middleware.AuthRequired(controllers.DeleteDevice))).Methods("POST")
-	router.HandleFunc("/api/device/rename", withRecovery(middleware.AuthRequired(controllers.RenameDevice))).Methods("POST")
-	router.HandleFunc("/api/device/lock", withRecovery(middleware.AuthRequired(controllers.LockDevice))).Methods("POST")
-	router.HandleFunc("/api/device/group", withRecovery(middleware.AuthRequired(controllers.SetDeviceGroup))).Methods("POST")
-	router.HandleFunc("/api/device/transfer", withRecovery(middleware.AuthRequired(controllers.TransferDevice))).Methods("POST")
+	// ─── 需要认证的 API（Auth Subrouter）───
+	auth := router.PathPrefix("").Subrouter()
+	auth.Use(authMiddleware)
 
-	// Subscription API
-	router.HandleFunc("/api/subscriptions", withRecovery(middleware.AuthRequired(controllers.CreateSubscription))).Methods("POST")
-	router.HandleFunc("/api/subscriptions", withRecovery(middleware.AuthRequired(controllers.GetSubscriptions))).Methods("GET")
-	router.HandleFunc("/api/subscriptions/{id}/fetch", withRecovery(middleware.AuthRequired(controllers.FetchVideos(hub)))).Methods("POST")
-	router.HandleFunc("/api/subscriptions/{id}/videos", withRecovery(middleware.AuthRequired(controllers.GetSubscriptionVideos))).Methods("GET")
-	router.HandleFunc("/api/subscriptions/{id}", withRecovery(middleware.AuthRequired(controllers.DeleteSubscription))).Methods("DELETE")
+	auth.HandleFunc("/api/auth/profile", controllers.GetProfile).Methods("GET")
+	auth.HandleFunc("/api/user/change-password", controllers.ChangePassword).Methods("POST")
+	auth.HandleFunc("/api/user/stats", controllers.GetUserStats).Methods("GET")
 
-	// Admin API
-	router.HandleFunc("/api/admin/users", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.GetUserList)))).Methods("GET")
-	router.HandleFunc("/api/admin/stats", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.GetStats)))).Methods("GET")
-	router.HandleFunc("/api/admin/user/credits", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.UpdateUserCredits)))).Methods("POST")
-	router.HandleFunc("/api/admin/user/role", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.UpdateUserRole)))).Methods("POST")
-	router.HandleFunc("/api/admin/user/{id}", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.DeleteUser)))).Methods("DELETE")
-	router.HandleFunc("/api/admin/devices", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.GetAllDevices)))).Methods("GET")
-	router.HandleFunc("/api/admin/device/unbind", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.AdminUnbindDevice)))).Methods("POST")
-	router.HandleFunc("/api/admin/device/{id}", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.AdminDeleteDevice)))).Methods("DELETE")
-	router.HandleFunc("/api/admin/tasks", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.GetAllTasks)))).Methods("GET")
-	router.HandleFunc("/api/admin/task/{id}", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.AdminDeleteTask)))).Methods("DELETE")
-	router.HandleFunc("/api/admin/subscriptions", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.GetAllSubscriptions)))).Methods("GET")
-	router.HandleFunc("/api/admin/subscription/{id}", withRecovery(middleware.AuthRequired(middleware.AdminRequired(controllers.AdminDeleteSubscription)))).Methods("DELETE")
+	// Device
+	auth.HandleFunc("/api/device/bind_token", controllers.GenerateBindToken).Methods("POST")
+	auth.HandleFunc("/api/device/list", controllers.GetUserDevices).Methods("GET")
+	auth.HandleFunc("/api/device/unbind", controllers.UnbindDevice).Methods("POST")
+	auth.HandleFunc("/api/device/delete", controllers.DeleteDevice).Methods("POST")
+	auth.HandleFunc("/api/device/rename", controllers.RenameDevice).Methods("POST")
+	auth.HandleFunc("/api/device/lock", controllers.LockDevice).Methods("POST")
+	auth.HandleFunc("/api/device/group", controllers.SetDeviceGroup).Methods("POST")
+	auth.HandleFunc("/api/device/transfer", controllers.TransferDevice).Methods("POST")
 
-	router.HandleFunc("/api/clients", withRecovery(middleware.AuthRequired(controllers.GetNodes))).Methods("GET")
+	// Subscription
+	auth.HandleFunc("/api/subscriptions", controllers.CreateSubscription).Methods("POST")
+	auth.HandleFunc("/api/subscriptions", controllers.GetSubscriptions).Methods("GET")
+	auth.HandleFunc("/api/subscriptions/{id}/fetch", controllers.FetchVideos(hub)).Methods("POST")
+	auth.HandleFunc("/api/subscriptions/{id}/videos", controllers.GetSubscriptionVideos).Methods("GET")
+	auth.HandleFunc("/api/subscriptions/{id}", controllers.DeleteSubscription).Methods("DELETE")
 
-	router.HandleFunc("/api/tasks", withRecovery(middleware.AuthRequired(controllers.GetTasks))).Methods("GET")
-	router.HandleFunc("/api/tasks/detail", withRecovery(middleware.AuthRequired(controllers.GetTaskDetail))).Methods("GET")
-	router.HandleFunc("/api/remoteCall", withRecovery(middleware.AuthRequired(controllers.RemoteCall(hub)))).Methods("POST")
-	router.HandleFunc("/api/call", withRecovery(middleware.AuthRequired(controllers.RemoteCall(hub)))).Methods("POST")
+	// Task & Remote Call
+	auth.HandleFunc("/api/clients", controllers.GetNodes).Methods("GET")
+	auth.HandleFunc("/api/tasks", controllers.GetTasks).Methods("GET")
+	auth.HandleFunc("/api/tasks/detail", controllers.GetTaskDetail).Methods("GET")
+	auth.HandleFunc("/api/remoteCall", controllers.RemoteCall(hub)).Methods("POST")
+	auth.HandleFunc("/api/call", controllers.RemoteCall(hub)).Methods("POST")
 
-	// Video Play
-	router.HandleFunc("/api/video/play", withRecovery(controllers.PlayVideo)).Methods("GET")
+	// Metrics & WS Stats
+	auth.HandleFunc("/api/metrics/summary", controllers.GetMetricsSummary).Methods("GET")
+	auth.HandleFunc("/api/metrics/timeseries", controllers.GetTimeSeriesData).Methods("GET")
+	auth.HandleFunc("/api/ws/stats", controllers.GetWSStats(hub)).Methods("GET")
 
-	// Metrics API
-	router.HandleFunc("/api/metrics/summary", withRecovery(middleware.AuthRequired(controllers.GetMetricsSummary))).Methods("GET")
-	router.HandleFunc("/api/metrics/timeseries", withRecovery(middleware.AuthRequired(controllers.GetTimeSeriesData))).Methods("GET")
+	// ─── 管理员 API（Admin Subrouter）───
+	admin := auth.PathPrefix("/api/admin").Subrouter()
+	admin.Use(adminMiddleware)
 
-	// WebSocket Stats API
-	router.HandleFunc("/api/ws/stats", withRecovery(middleware.AuthRequired(controllers.GetWSStats(hub)))).Methods("GET")
+	admin.HandleFunc("/users", controllers.GetUserList).Methods("GET")
+	admin.HandleFunc("/stats", controllers.GetStats).Methods("GET")
+	admin.HandleFunc("/user/credits", controllers.UpdateUserCredits).Methods("POST")
+	admin.HandleFunc("/user/role", controllers.UpdateUserRole).Methods("POST")
+	admin.HandleFunc("/user/{id}", controllers.DeleteUser).Methods("DELETE")
+	admin.HandleFunc("/devices", controllers.GetAllDevices).Methods("GET")
+	admin.HandleFunc("/device/unbind", controllers.AdminUnbindDevice).Methods("POST")
+	admin.HandleFunc("/device/{id}", controllers.AdminDeleteDevice).Methods("DELETE")
+	admin.HandleFunc("/tasks", controllers.GetAllTasks).Methods("GET")
+	admin.HandleFunc("/task/{id}", controllers.AdminDeleteTask).Methods("DELETE")
+	admin.HandleFunc("/subscriptions", controllers.GetAllSubscriptions).Methods("GET")
+	admin.HandleFunc("/subscription/{id}", controllers.AdminDeleteSubscription).Methods("DELETE")
 
-	// 静态文件服务 - Vue SPA 支持
+	// ─── 静态文件服务 - Vue SPA 支持 ───
 	fs := http.FileServer(http.Dir("frontend/dist"))
-	router.PathPrefix("/").HandlerFunc(withRecovery(func(w http.ResponseWriter, r *http.Request) {
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 如果是 API 调用或 WebSocket，不处理
 		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			http.NotFound(w, r)
@@ -126,7 +149,7 @@ func main() {
 
 		// 文件存在，直接服务
 		fs.ServeHTTP(w, r)
-	}))
+	})
 
 	log.Println("Hub Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))

@@ -18,6 +18,9 @@ func TestInitJWTSecretFromEnv(t *testing.T) {
 	})
 
 	t.Run("valid secret", func(t *testing.T) {
+		oldSecret := JWTSecret
+		defer func() { JWTSecret = oldSecret }()
+
 		secret := "this-is-a-very-strong-secret-with-32+chars"
 		t.Setenv("HUB_JWT_SECRET", secret)
 		if err := InitJWTSecretFromEnv(); err != nil {
@@ -25,6 +28,16 @@ func TestInitJWTSecretFromEnv(t *testing.T) {
 		}
 		if string(JWTSecret) != secret {
 			t.Fatalf("JWTSecret not updated")
+		}
+	})
+
+	t.Run("nil before init", func(t *testing.T) {
+		oldSecret := JWTSecret
+		defer func() { JWTSecret = oldSecret }()
+
+		JWTSecret = nil
+		if JWTSecret != nil {
+			t.Fatal("JWTSecret should be nil before initialization")
 		}
 	})
 }
