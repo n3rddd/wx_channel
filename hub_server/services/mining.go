@@ -9,12 +9,29 @@ import (
 
 // StartMiningService starts the background worker to award credits for online devices
 func StartMiningService() {
+	// 1. Credit accumulation ticker (every 1 minute)
 	ticker := time.NewTicker(1 * time.Minute)
+
+	// 2. Cleanup ticker (every 1 hour)
+	cleanupTicker := time.NewTicker(1 * time.Hour)
+
+	// Run cleanup immediately on startup to fix current performance issues
+	go func() {
+		if err := database.CleanupOldTransactions(7); err != nil {
+			log.Printf("Startup cleanup failed: %v", err)
+		}
+	}()
+
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
 				processMiningCredits()
+			case <-cleanupTicker.C:
+				// Keep only recent 7 days of mining logs to optimize DB size
+				if err := database.CleanupOldTransactions(7); err != nil {
+					log.Printf("Periodic cleanup failed: %v", err)
+				}
 			}
 		}
 	}()

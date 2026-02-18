@@ -3,12 +3,54 @@ package controllers
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
-	"wx_channel/internal/utils"
+	hubutils "wx_channel/hub_server/utils"
 )
+
+// mediaClient 复用的 HTTP 客户端（流式代理使用无超时，但有连接超时）
+var mediaClient = &http.Client{
+	Timeout: 0, // 流式传输不设整体超时
+	Transport: &http.Transport{
+		DialContext:         (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
+
+// isAllowedURL 检查 URL 是否为允许的外部地址（防止 SSRF）
+func isAllowedURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	// 只允许 http/https
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+
+	host := u.Hostname()
+
+	// 阻止访问内网地址
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return false
+		}
+	}
+
+	// 阻止 localhost
+	if strings.EqualFold(host, "localhost") {
+		return false
+	}
+
+	return true
+}
 
 func PlayVideo(w http.ResponseWriter, r *http.Request) {
 	targetURL := r.URL.Query().Get("url")
@@ -16,6 +58,12 @@ func PlayVideo(w http.ResponseWriter, r *http.Request) {
 	if targetURL == "" {
 		fmt.Println("[PlayVideo] Error: url parameter required")
 		http.Error(w, "url parameter required", http.StatusBadRequest)
+		return
+	}
+
+	// SSRF 防护：检查 URL 合法性
+	if !isAllowedURL(targetURL) {
+		http.Error(w, "forbidden URL", http.StatusForbidden)
 		return
 	}
 
@@ -50,9 +98,8 @@ func PlayVideo(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Range", rangeHeader)
 	}
 
-	// 发送请求
-	client := &http.Client{Timeout: 0}
-	resp, err := client.Do(req)
+	// 使用复用的 http.Client
+	resp, err := mediaClient.Do(req)
 	if err != nil {
 		http.Error(w, "failed to fetch video", http.StatusBadGateway)
 		return
@@ -94,7 +141,7 @@ func PlayVideo(w http.ResponseWriter, r *http.Request) {
 
 		// 创建解密读取器
 		// 加密区域大小为 131072 字节（128KB）
-		decryptReader := utils.NewDecryptReader(resp.Body, decryptKey, startOffset, 131072)
+		decryptReader := hubutils.NewDecryptReader(resp.Body, decryptKey, startOffset, 131072)
 
 		// 写入状态码
 		w.WriteHeader(resp.StatusCode)

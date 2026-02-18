@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"wx_channel/hub_server/database"
+	"wx_channel/hub_server/middleware"
 	"wx_channel/hub_server/models"
 	"wx_channel/hub_server/ws"
 )
@@ -16,7 +18,7 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	nodeID := r.URL.Query().Get("node_id")
 
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 
 	if limit <= 0 {
 		limit = 20
@@ -43,7 +45,7 @@ func GetTaskDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := r.Context().Value("user_id").(uint)
+	userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 	task, err := database.GetTaskByID(uint(id), userID)
 	if err != nil {
 		http.Error(w, "Task not found", 404)
@@ -71,14 +73,27 @@ func RemoteCall(hub *ws.Hub) http.HandlerFunc {
 		}
 
 		// Check Credits
-		userID := r.Context().Value("user_id").(uint)
+		userID := r.Context().Value(middleware.ContextKeyUserID).(uint)
 		cost := int64(0)
 
 		switch req.Action {
 		case "search_channels", "search_videos":
 			cost = 1
 		case "download_video":
-			cost = 10 // TODO: Dynamic cost based on resolution?
+			cost = 10
+		case "api_call":
+			// Check specific API calls for browsing cost
+			var apiData struct {
+				Key string `json:"key"`
+			}
+			if err := json.Unmarshal(req.Data, &apiData); err == nil {
+				switch apiData.Key {
+				case "key:channels:feed_profile": // Video Detail
+					cost = 1
+				case "key:channels:feed_list": // User Profile / Channel Feed
+					cost = 1
+				}
+			}
 		}
 
 		if cost > 0 {
@@ -170,6 +185,12 @@ func RemoteCall(hub *ws.Hub) http.HandlerFunc {
 
 		resp, err := hub.Call(userID, clientID, req.Action, req.Data, timeout)
 		if err != nil {
+			// 调用失败，退还已扣积分
+			if cost > 0 {
+				if refundErr := database.AddCredits(userID, cost); refundErr != nil {
+					log.Printf("[RemoteCall] 退还积分失败 userID=%d cost=%d: %v", userID, cost, refundErr)
+				}
+			}
 			// Return JSON error instead of plain text
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{

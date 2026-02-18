@@ -56,7 +56,7 @@ func InitDB(path string) error {
 
 func GetNodes() ([]models.Node, error) {
 	var nodes []models.Node
-	result := DB.Find(&nodes)
+	result := DB.Limit(1000).Find(&nodes)
 	return nodes, result.Error
 }
 
@@ -254,6 +254,11 @@ func UpdateUserRole(userID uint, role string) error {
 	return DB.Model(&models.User{}).Where("id = ?", userID).Update("role", role).Error
 }
 
+// UpdateUserPassword updates a user's password hash
+func UpdateUserPassword(userID uint, passwordHash string) error {
+	return DB.Model(&models.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
+}
+
 // DeleteUser permanently deletes a user and all related data
 func DeleteUser(userID uint) error {
 	// 开始事务
@@ -296,7 +301,7 @@ func DeleteUser(userID uint) error {
 // GetAllDevices returns all devices in the system
 func GetAllDevices() ([]models.Node, error) {
 	var nodes []models.Node
-	err := DB.Order("last_seen desc").Find(&nodes).Error
+	err := DB.Order("last_seen desc").Limit(1000).Find(&nodes).Error
 	return nodes, err
 }
 
@@ -310,6 +315,7 @@ func GetAllTasks() ([]models.Task, int64, error) {
 	// Select only summary headers to reduce payload size
 	err := DB.Select("id", "type", "node_id", "user_id", "status", "error", "created_at", "updated_at").
 		Order("created_at desc").
+		Limit(1000).
 		Find(&tasks).Error
 
 	return tasks, count, err
@@ -323,23 +329,35 @@ func DeleteTask(id uint) error {
 // GetAllSubscriptions returns all subscriptions in the system with video count
 func GetAllSubscriptions() ([]map[string]interface{}, error) {
 	var subscriptions []models.Subscription
-	err := DB.Order("created_at desc").Find(&subscriptions).Error
+	err := DB.Order("created_at desc").Limit(1000).Find(&subscriptions).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// 为每个订阅添加视频数量
+	// 批量获取每个订阅的视频数量（消除 N+1 查询）
+	type videoCountRow struct {
+		SubscriptionID uint
+		Count          int64
+	}
+	var counts []videoCountRow
+	DB.Model(&models.SubscribedVideo{}).
+		Select("subscription_id, count(*) as count").
+		Group("subscription_id").
+		Find(&counts)
+
+	countMap := make(map[uint]int64, len(counts))
+	for _, c := range counts {
+		countMap[c.SubscriptionID] = c.Count
+	}
+
 	result := make([]map[string]interface{}, len(subscriptions))
 	for i, sub := range subscriptions {
-		var videoCount int64
-		DB.Model(&models.SubscribedVideo{}).Where("subscription_id = ?", sub.ID).Count(&videoCount)
-
 		result[i] = map[string]interface{}{
 			"id":          sub.ID,
 			"user_id":     sub.UserID,
 			"finder_id":   sub.WxUsername,
 			"nickname":    sub.WxNickname,
-			"video_count": videoCount,
+			"video_count": countMap[sub.ID],
 			"created_at":  sub.CreatedAt,
 			"updated_at":  sub.UpdatedAt,
 		}
@@ -385,4 +403,10 @@ func SetSetting(key, value string) error {
 		Key:   key,
 		Value: value,
 	}).Error
+}
+
+// CleanupOldTransactions deletes mining transactions older than retentionDays
+func CleanupOldTransactions(retentionDays int) error {
+	threshold := time.Now().AddDate(0, 0, -retentionDays)
+	return DB.Where("type = ? AND created_at < ?", "mining", threshold).Delete(&models.Transaction{}).Error
 }

@@ -39,15 +39,15 @@ type Client struct {
 
 // ConnectionStats 连接统计信息
 type ConnectionStats struct {
-	ConnectedAt   time.Time
-	PingCount     int64
-	PongCount     int64
-	LastPingTime  time.Time
-	LastPongTime  time.Time
-	AvgLatency    time.Duration
-	FailureCount  int
-	MessagesSent  int64
-	MessagesRecv  int64
+	ConnectedAt  time.Time
+	PingCount    int64
+	PongCount    int64
+	LastPingTime time.Time
+	LastPongTime time.Time
+	AvgLatency   time.Duration
+	FailureCount int
+	MessagesSent int64
+	MessagesRecv int64
 }
 
 func NewClient(id string, conn *websocket.Conn, hub *Hub, ip string) *Client {
@@ -157,7 +157,7 @@ func (c *Client) handleMessage(msg CloudMessage) {
 			LastSeen:            now,
 			HardwareFingerprint: p.HardwareFingerprint,
 		})
-		
+
 		// 发送心跳响应（Pong）
 		c.sendHeartbeatResponse(msg.ID)
 
@@ -175,19 +175,21 @@ func (c *Client) handleMessage(msg CloudMessage) {
 			log.Printf("解析响应失败: ClientID=%s, Error=%v", c.ID, err)
 			return
 		}
-		
+
 		c.respMu.RLock()
 		ch, ok := c.respChannels[resp.RequestID]
 		c.respMu.RUnlock()
-		
+
 		if ok {
 			// 使用 select 防止阻塞
+			timer := time.NewTimer(5 * time.Second)
 			select {
 			case ch <- resp:
 				// 响应已发送
-			case <-time.After(5 * time.Second):
+			case <-timer.C:
 				log.Printf("响应通道发送超时: ClientID=%s, RequestID=%s", c.ID, resp.RequestID)
 			}
+			timer.Stop()
 		} else {
 			log.Printf("未找到响应通道: ClientID=%s, RequestID=%s (可能已超时)", c.ID, resp.RequestID)
 		}
@@ -213,7 +215,7 @@ func (c *Client) handleMessage(msg CloudMessage) {
 	}
 }
 
-// decompressData 解压数据
+// decompressData 解压数据（限制最大 10MB 防止 gzip 炸弹）
 func (c *Client) decompressData(data []byte) ([]byte, error) {
 	reader, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
@@ -221,16 +223,17 @@ func (c *Client) decompressData(data []byte) ([]byte, error) {
 	}
 	defer reader.Close()
 
-	return io.ReadAll(reader)
+	const maxDecompressSize = 10 * 1024 * 1024 // 10MB
+	return io.ReadAll(io.LimitReader(reader, maxDecompressSize))
 }
 
 func (c *Client) WriteMessage(msg []byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
 	defer cancel()
-	
+
 	err := c.Conn.Write(ctx, websocket.MessageText, msg)
 	if err == nil {
 		c.stats.MessagesSent++
@@ -246,13 +249,13 @@ func (c *Client) sendHeartbeatResponse(requestID string) {
 		"client_id": "hub-server",
 		"timestamp": time.Now().Unix(),
 	}
-	
+
 	respBytes, err := json.Marshal(response)
 	if err != nil {
 		log.Printf("序列化心跳响应失败: %v", err)
 		return
 	}
-	
+
 	if err := c.WriteMessage(respBytes); err != nil {
 		log.Printf("发送心跳响应失败: %v", err)
 	}
@@ -269,7 +272,7 @@ func (c *Client) GetStats() ConnectionStats {
 func (c *Client) Close() {
 	c.cancel()
 	c.Conn.Close(websocket.StatusNormalClosure, "")
-	
+
 	// 记录连接统计
 	stats := c.GetStats()
 	uptime := time.Since(stats.ConnectedAt)
@@ -288,7 +291,7 @@ func (c *Client) pingLoop() {
 			return
 		case <-ticker.C:
 			start := time.Now()
-			
+
 			// 检查连接是否已关闭
 			c.mu.Lock()
 			if c.ctx.Err() != nil {
@@ -296,35 +299,35 @@ func (c *Client) pingLoop() {
 				return
 			}
 			c.mu.Unlock()
-			
+
 			ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
 			err := c.Conn.Ping(ctx)
 			cancel()
-			
+
 			latency := time.Since(start)
-			
+
 			c.mu.Lock()
 			c.stats.PingCount++
 			c.stats.LastPingTime = start
-			
+
 			if err != nil {
 				c.stats.FailureCount++
 				failureCount := c.stats.FailureCount
 				c.mu.Unlock()
-				
+
 				log.Printf("Ping 失败: ClientID=%s, Error=%v, 连续失败=%d", c.ID, err, failureCount)
-				
+
 				// Ping 失败，触发连接清理
 				log.Printf("Ping 失败，触发连接清理: ClientID=%s", c.ID)
 				c.Hub.Unregister <- c
 				return
 			}
-			
+
 			// Ping 成功
 			c.stats.PongCount++
 			c.stats.LastPongTime = time.Now()
 			c.stats.FailureCount = 0
-			
+
 			// 计算平均延迟（指数移动平均）
 			if c.stats.AvgLatency == 0 {
 				c.stats.AvgLatency = latency
@@ -332,7 +335,7 @@ func (c *Client) pingLoop() {
 				c.stats.AvgLatency = (c.stats.AvgLatency*9 + latency) / 10
 			}
 			c.mu.Unlock()
-			
+
 			// 如果延迟过高，记录警告
 			if latency > 5*time.Second {
 				log.Printf("Ping 延迟过高: ClientID=%s, Latency=%v", c.ID, latency)

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 	"sync"
 	"time"
 	"wx_channel/hub_server/database"
@@ -73,30 +76,32 @@ func (h *Hub) cleanupStaleConnections() {
 
 	for range ticker.C {
 		h.mu.RLock()
-		staleClients := []*Client{}
+		staleIDs := []string{}
 		// 增加超时阈值到 900 秒（15 分钟），以支持长时间的 API 调用
-		// - api_call: 2 分钟
-		// - search_channels/videos: 3 分钟
-		// - download_video: 10 分钟
-		// 900 秒阈值提供充足的缓冲，同时仍能清理真正的僵尸连接
 		threshold := time.Now().Add(-900 * time.Second)
 
 		for _, client := range h.Clients {
 			client.mu.Lock()
 			lastSeen := client.LastSeen
 			client.mu.Unlock()
-			
+
 			if lastSeen.Before(threshold) {
-				staleClients = append(staleClients, client)
+				staleIDs = append(staleIDs, client.ID)
 			}
 		}
 		h.mu.RUnlock()
 
-		// 清理僵尸连接
-		for _, client := range staleClients {
-			log.Printf("清理僵尸连接: %s (最后心跳: %v, 已超时 %v)", 
-				client.ID, client.LastSeen, time.Since(client.LastSeen))
-			h.Unregister <- client
+		// 在锁外直接清理，避免向 Unregister channel 发送（防死锁）
+		for _, id := range staleIDs {
+			h.mu.Lock()
+			if client, ok := h.Clients[id]; ok {
+				log.Printf("清理僵尸连接: %s (最后心跳: %v, 已超时 %v)",
+					client.ID, client.LastSeen, time.Since(client.LastSeen))
+				client.Close()
+				delete(h.Clients, id)
+				database.UpdateNodeStatus(id, "offline")
+			}
+			h.mu.Unlock()
 		}
 	}
 }
@@ -205,6 +210,10 @@ func (h *Hub) Call(userID uint, clientID string, action string, data interface{}
 		return ResponsePayload{}, fmt.Errorf("发送消息失败: %w", err)
 	}
 
+	// 创建超时 timer（可被 Stop 释放，避免 time.After 泄漏）
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
 	select {
 	case resp, ok := <-respChan:
 		duration := time.Since(startTime)
@@ -213,7 +222,7 @@ func (h *Hub) Call(userID uint, clientID string, action string, data interface{}
 			database.UpdateTaskResult(task.ID, "failed", "", "响应通道已关闭")
 			return ResponsePayload{}, fmt.Errorf("响应通道已关闭")
 		}
-		
+
 		resBytes, _ := json.Marshal(resp.Data)
 		status := "success"
 		if !resp.Success {
@@ -224,8 +233,8 @@ func (h *Hub) Call(userID uint, clientID string, action string, data interface{}
 		}
 		database.UpdateTaskResult(task.ID, status, string(resBytes), resp.Error)
 		return resp, nil
-		
-	case <-time.After(timeout):
+
+	case <-timer.C:
 		log.Printf("远程调用超时: ID=%s, Timeout=%v", reqID, timeout)
 		database.UpdateTaskResult(task.ID, "timeout", "", "request timeout")
 		return ResponsePayload{}, fmt.Errorf("请求超时")
@@ -233,6 +242,18 @@ func (h *Hub) Call(userID uint, clientID string, action string, data interface{}
 }
 
 func (h *Hub) ServeWs(w http.ResponseWriter, r *http.Request) {
+	if !isHubOriginAllowed(r.Header.Get("Origin")) {
+		http.Error(w, "forbidden origin", http.StatusForbidden)
+		return
+	}
+
+	if expected := strings.TrimSpace(os.Getenv("HUB_WS_TOKEN")); expected != "" {
+		if extractHubToken(r) != expected {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	clientID := r.Header.Get("X-Client-ID")
 	if clientID == "" {
 		clientID = r.URL.Query().Get("client_id")
@@ -244,8 +265,7 @@ func (h *Hub) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	// 使用 nhooyr.io/websocket 升级连接
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		InsecureSkipVerify: true, // 允许所有来源
-		CompressionMode:    websocket.CompressionContextTakeover, // 启用压缩
+		CompressionMode: websocket.CompressionContextTakeover, // 启用压缩
 	})
 	if err != nil {
 		log.Printf("Upgrade error: %v", err)
@@ -266,4 +286,46 @@ func (h *Hub) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	// Start reading (blocking until disconnect)
 	go client.ReadPump()
+}
+
+func isHubOriginAllowed(origin string) bool {
+	allowedRaw := strings.TrimSpace(os.Getenv("HUB_ALLOWED_ORIGINS"))
+	if allowedRaw == "" {
+		// 默认只允许本地浏览器来源；无 Origin（非浏览器客户端）仍允许。
+		if origin == "" {
+			return true
+		}
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		host := strings.ToLower(u.Hostname())
+		return host == "localhost" || host == "127.0.0.1" || host == "::1" || strings.HasSuffix(host, ".localhost")
+	}
+	if origin == "" {
+		return false
+	}
+
+	parts := strings.Split(allowedRaw, ",")
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "*" || p == origin {
+			return true
+		}
+	}
+	return false
+}
+
+func extractHubToken(r *http.Request) string {
+	token := strings.TrimSpace(r.Header.Get("X-Local-Auth"))
+	if token != "" {
+		return token
+	}
+
+	auth := strings.TrimSpace(r.Header.Get("Authorization"))
+	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		return strings.TrimSpace(auth[len("Bearer "):])
+	}
+
+	return strings.TrimSpace(r.URL.Query().Get("token"))
 }
