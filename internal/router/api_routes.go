@@ -105,6 +105,16 @@ func (r *APIRouter) registerRoutes() {
 	// 健康检查
 	r.mux.HandleFunc("/api/health", r.consoleHandler.HandleHealth)
 
+	// 统计信息
+	r.mux.HandleFunc("/api/stats", r.consoleHandler.HandleStatsAPI)
+	r.mux.HandleFunc("/api/stats/", r.consoleHandler.HandleStatsAPI)
+
+	// 搜索
+	r.mux.HandleFunc("/api/search", r.consoleHandler.HandleSearch)
+
+	// 文件操作
+	r.mux.HandleFunc("/api/files/", r.consoleHandler.HandleFilesAPI)
+
 	// 系统信息
 
 	// 控制台 API - 导出功能
